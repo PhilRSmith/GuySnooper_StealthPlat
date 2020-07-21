@@ -5,4 +5,4 @@ The intention of this project is to develop a fully functioning 2.5D platformer 
 	- Began creating basic player physics and movement
 - Day 2: Development log moved into a wordspace blog
 
-## From now one the blog is at https://caelumez.wordpress.com/
+## From now on the blog is at https://caelumez.wordpress.com/
