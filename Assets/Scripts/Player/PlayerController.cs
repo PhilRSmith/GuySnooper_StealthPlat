@@ -20,8 +20,12 @@ public class PlayerController : MonoBehaviour
     Vector3 previousMove = new Vector3(0.0f, 0.0f , 0.0f);
     Vector3 playerVelocity = new Vector3(0.0f, 0.0f , 0.0f);
     private int _currentDirectionFaced = 1;
+
+    // START:Terrain Checks
     private bool _isGrounded;
     private bool _onWall = false;
+    //   END:Terrain Checks
+
     /***   END: Player Movement/Gravity Variables ***/
 
     /*** START: Collision/Environment Interactions **/
@@ -47,10 +51,26 @@ public class PlayerController : MonoBehaviour
         Movement();
     }
 
+    void LateUpdate() 
+    {
+        transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f);
+    }
     void Movement()
     {
         
         _horizontalInput = Input.GetAxis("Horizontal");
+        if(_horizontalInput>0.1f)
+        {
+            _horizontalInput=1.0f;
+        }
+        else if(_horizontalInput<-0.1f)
+        {
+            _horizontalInput=-1.0f;
+        }
+        else
+        {
+            _horizontalInput=0.0f;
+        }
         playerDirection.x = _horizontalInput;
         if(_wallJumpInProgress==false)
         {
@@ -106,6 +126,10 @@ public class PlayerController : MonoBehaviour
                 {
                     playerVelocity = previousMove;
                 }
+                else
+                {
+                    
+                }
             }
             
             
@@ -116,19 +140,25 @@ public class PlayerController : MonoBehaviour
 
     private void OnControllerColliderHit(ControllerColliderHit hit) 
     {
+        if(!_playerController.isGrounded)
+        {
+            Debug.Log(hit.normal);
+        }
         if(!_playerController.isGrounded && hit.normal.y <0.1f)
         {
             if(Input.GetKeyDown(KeyCode.Space))
             {
                 if(_wallJumpInProgress==false)
-                {    
-                    Debug.DrawRay(hit.point, hit.normal, Color.green, 2.00f);
-                    _yVelocity = _jumpHeight;
-                    Debug.Log(hit.normal);
-                    StartCoroutine(WallJumpOccurring());
-                    playerVelocity= hit.normal * (_playerSpeed +1);
-                    //previousMove = playerVelocity;
-                    transform.rotation = Quaternion.LookRotation(hit.normal);
+                {   
+                    if(((hit.normal.x<0) && _horizontalInput>0) || ((hit.normal.x>0) && _horizontalInput<0))
+                    {   
+                        Debug.DrawRay(hit.point, hit.normal, Color.green, 2.00f);
+                        _yVelocity = _jumpHeight;
+                        Debug.Log(hit.normal);
+                        StartCoroutine(WallJumpOccurring());
+                        playerVelocity= hit.normal * (_playerSpeed +1);
+                        transform.rotation = Quaternion.LookRotation(hit.normal);
+                    }
                 }
             }
         }
@@ -138,7 +168,7 @@ public class PlayerController : MonoBehaviour
     {
         _wallJumpInProgress=true;
         _wallJumpLength = Time.time + _wallJumpDelay;
-        Debug.Log("WallJump Activated");
+        //Debug.Log("WallJump Activated");
         while(_wallJumpInProgress==true)
         {   
             yield return new WaitForSeconds(.02f);
@@ -146,12 +176,12 @@ public class PlayerController : MonoBehaviour
             if(_onWall)
             {
                 _wallJumpInProgress=false;
-                Debug.Log("WallJump Deactivated - hit another wall");
+                //Debug.Log("WallJump Deactivated - hit another wall");
             }
             else if (Time.time>= _wallJumpLength)
             {
                 _wallJumpInProgress=false;
-                Debug.Log("WallJump Deactivated - Timed out");
+                //Debug.Log("WallJump Deactivated - Timed out");
             }
             
         }
@@ -186,7 +216,7 @@ public class PlayerController : MonoBehaviour
         if (Physics.Raycast(_playerController.bounds.center, Vector3.down, _playerController.bounds.extents.y + heightBuffer)) 
         {
             _isGrounded = true;
-            Debug.Log("Grounded");
+            //Debug.Log("Grounded");
         }
         else
         {
@@ -202,7 +232,7 @@ public class PlayerController : MonoBehaviour
         || (Physics.Raycast(_playerController.bounds.center, Vector3.right,_playerController.bounds.extents.x + distBuffer)))
         {
             _onWall=true;
-            Debug.Log("On Wall");
+            //Debug.Log("On Wall");
         }
         else
         {
