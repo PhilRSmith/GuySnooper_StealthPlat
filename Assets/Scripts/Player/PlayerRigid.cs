@@ -15,18 +15,23 @@ public class PlayerRigid : MonoBehaviour
     [SerializeField]
     private float _playerGravityScale=0.5f;
     [SerializeField]
-    private float _jumpVelocity = 5.0f;
-    [SerializeField]
-    private float _wallJumpImpulse = 10.0f;
+    private float _jumpVelocity = 8.0f;
+    private float _wallJumpImpulse = 15.0f;
     [SerializeField]
     private float _dashImpulse = 100.0f;
-    [SerializeField]
-    private bool isGrounded;
-    private bool onWall;
+    private bool _isGrounded;
+    private bool _onWall;
     private float _yVelocity=0.0f;
     private float _horizontalInput;
     private int _currentDirectionFaced = 1;
     /***   END: Player Movement/Gravity Variables ***/
+
+    /*** START: Collision/Environment Interactions **/
+    private float _wallJumpDelay = .33f;
+    private float _wallJumpLength;
+    private bool _wallJumpInProgress = false;
+    private float checkTime;
+    /***   END: Collision/Environment Interactions **/
 
     // Start is called before the first frame update
     void Start()
@@ -49,7 +54,9 @@ public class PlayerRigid : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        checkTime = Time.time;
         Movement();
+
     }
 
     void Movement()
@@ -66,15 +73,20 @@ public class PlayerRigid : MonoBehaviour
             playerVelocity = Dash(playerVelocity);
         }
 
+        
         _playerRigidBody.velocity = playerVelocity;
+        
         /* Jumping behavior */
         Jump();
         
         if(_horizontalInput!=0)
         {
-            Vector3 lookDirection = new Vector3(0,0,1);
-            lookDirection = lookDirection* _horizontalInput;
-            transform.rotation = Quaternion.LookRotation(lookDirection);
+            if(_wallJumpInProgress==false)
+            {   
+                Vector3 lookDirection = new Vector3(0,0,1);
+                lookDirection = lookDirection* _horizontalInput;
+                transform.rotation = Quaternion.LookRotation(lookDirection);
+            }
         }
         
     }
@@ -97,11 +109,12 @@ public class PlayerRigid : MonoBehaviour
         //if a collider was hit, we are grounded
         if (Physics.Raycast(_playerCollider.bounds.center, Vector3.down, _playerCollider.bounds.extents.y + heightBuffer)) 
         {
-            isGrounded = true;
+            _isGrounded = true;
+            Debug.Log("Grounded");
         }
         else
         {
-            isGrounded = false;
+            _isGrounded = false;
         }
 
     }
@@ -112,11 +125,12 @@ public class PlayerRigid : MonoBehaviour
         if ((Physics.Raycast(_playerCollider.bounds.center, Vector3.left,_playerCollider.bounds.extents.x + distBuffer))
         || (Physics.Raycast(_playerCollider.bounds.center, Vector3.right,_playerCollider.bounds.extents.x + distBuffer)))
         {
-            onWall=true;
+            _onWall=true;
+            Debug.Log("On Wall");
         }
         else
         {
-            onWall=false;
+            _onWall=false;
         }
     }
 
@@ -127,26 +141,32 @@ public class PlayerRigid : MonoBehaviour
         if(Input.GetKeyDown(KeyCode.Space))
         {
             CheckIfGrounded();
-            CheckIfOnWall();
-            if(isGrounded)
+            if(_isGrounded)
             {
                 _playerRigidBody.velocity += Vector3.up * _jumpVelocity;
             } 
-            else if(onWall)
+            else
             {   
-                Vector3 wallJump = new Vector3(_wallJumpImpulse, _jumpVelocity,0);
-                //_playerRigidBody.velocity += Vector3.up * _jumpVelocity;
-                if(_currentDirectionFaced==1)
+                CheckIfOnWall();
+                if(_wallJumpInProgress==false)
                 {
-                    wallJump.x *=-1;
-                    _playerRigidBody.AddForce(wallJump, ForceMode.Impulse);
-                    
-                }
-                else if(_currentDirectionFaced==-1)
-                {
-                    _playerRigidBody.AddForce(wallJump, ForceMode.Impulse);
-                }
-         } 
+                    if(_onWall)
+                    {
+                        _wallJumpLength = Time.time + _wallJumpDelay;
+                        if(_currentDirectionFaced==1)
+                        {
+                            
+                            _currentDirectionFaced = -1;
+                        } 
+                        else if(_currentDirectionFaced==-1)
+                        {
+                            _currentDirectionFaced = 1;
+                        }
+                        _wallJumpInProgress=true;
+                        StartCoroutine(WallJumpMovement());
+                    }
+                }  
+            } 
         }
         else
         {
@@ -155,17 +175,33 @@ public class PlayerRigid : MonoBehaviour
         /* Jumping behavior END */
     }
 
-    /*private void OnCollisionEnter(Collision other) 
+    /* Coroutine that governs the exact movement performed during the initial part of a walljump*/
+    IEnumerator WallJumpMovement()
     {
-        foreach (ContactPoint contact in other.contacts)
+        Vector3 wallJump = new Vector3((_wallJumpImpulse * _currentDirectionFaced), 5.0f, 0);
+        Vector3 lookDirection = new Vector3(0,0,1);
+    
+        lookDirection = lookDirection * _currentDirectionFaced;
+        transform.rotation = Quaternion.LookRotation(lookDirection);
+
+
+        while(Time.time<_wallJumpLength && (_wallJumpInProgress==true) )
         {
-            if(!isGrounded && contact.normal.y <0.1f)
+            wallJump.y -= .35f;
+            if(Time.time<(_wallJumpLength - ((.5f)*_wallJumpDelay)))
             {
-                _playerRigidBody.AddForce(contact.normal * _wallJumpImpulse, ForceMode.Impulse);
+                _playerRigidBody.velocity = wallJump;
             }
-            Debug.DrawRay(contact.point, contact.normal,Color.green, 1.25f);
+            else
+            {
+                _playerRigidBody.velocity =((1.0f/((100*_wallJumpDelay)/2)) * wallJump);
+            }
+            
+            yield return new WaitForSeconds(0.01f);
         }
-    }*/
+        _wallJumpInProgress=false;
+        
+    }
 
     Vector3 Dash(Vector3 playerVelocity)
     {
