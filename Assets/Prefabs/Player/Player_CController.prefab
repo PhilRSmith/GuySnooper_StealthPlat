@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 3552643463012666127}
   - component: {fileID: 863662560}
   m_Layer: 0
-  m_Name: Player_PController
+  m_Name: Player_CController
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -93,7 +93,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1a0e3a531bc60c843910eb46823dec3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _playerSpeed: 5
+  _playerSpeed: 6
   _playerGravity: 0.5
   _jumpHeight: 15
   _dashImpulse: 100
