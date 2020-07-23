@@ -8,7 +8,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float _playerSpeed=6.0f;
     [SerializeField]
-    private float _playerGravity=0.5f;
+    private float _playerGravity=-0.5f;
     [SerializeField]
     private float _jumpHeight = 10.0f;
     private float _yVelocity=0.0f;
@@ -37,7 +37,7 @@ public class PlayerController : MonoBehaviour
     private float _dashCooldown = 3.0f;
     private float _dashLength;
     [SerializeField]
-    private float _dashImpulse = 100.0f;
+    private float _dashImpulse = 25.0f;
     /***   END: Abailty Variables **/
 
     // Start is called before the first frame update
@@ -75,7 +75,8 @@ public class PlayerController : MonoBehaviour
                 _horizontalInput=-0.5f;
             }
             playerDirection.x = _horizontalInput;
-            if(_wallJumpInProgress==true) 
+            if((_wallJumpInProgress==true)
+             ||(_dashInProgress==true)) 
             {
                 playerVelocity = previousMove;
                 
@@ -84,11 +85,19 @@ public class PlayerController : MonoBehaviour
             {
                 playerVelocity = playerDirection * _playerSpeed;
             }
+
         }
         else
         {
-            playerDirection.x = _horizontalInput;
-            playerVelocity = playerDirection *_playerSpeed;
+            if(_dashInProgress)
+            {
+                playerVelocity.x = previousMove.x;
+            }
+            else
+            {
+                playerDirection.x = _horizontalInput;
+                playerVelocity = playerDirection *_playerSpeed;
+            }
         }
         
         /*Check to see which direction the player is facing */
@@ -129,7 +138,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            y -= _playerGravity; /*if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
+            y += _playerGravity; /*if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
 
             if(_wallJumpInProgress)
             {
@@ -155,13 +164,17 @@ public class PlayerController : MonoBehaviour
 
     private void OnControllerColliderHit(ControllerColliderHit hit) 
     {   
+        WallCheck(hit);
+        
         if(!_playerController.isGrounded)
         {
-            Debug.Log(hit.normal);
+            //Debug.Log(hit.normal);
             if(hit.normal.y==-1.0f)
             {   
-                _yVelocity= -1.5f;
+                _yVelocity= 3*_playerGravity;
             }
+            
+           
             if(hit.normal.y<0.1f)
             {    
                 if(Input.GetKeyDown(KeyCode.Space))
@@ -183,6 +196,8 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    
+
     /* Coroutine that does continuous checks for the walljump delay period to see if another collision occurred or of the motion times out */
     IEnumerator WallJumpOccurring()
     {
@@ -191,48 +206,45 @@ public class PlayerController : MonoBehaviour
         //Debug.Log("WallJump Activated");
         while(_wallJumpInProgress==true)
         {   
-            yield return new WaitForSeconds(.02f);
-            CheckIfOnWall();
-            if(_onWall)
-            {
-                _wallJumpInProgress=false;
-                //Debug.Log("WallJump Deactivated - hit another wall");
-            }
-            else if (Time.time>= _wallJumpLength)
+            yield return new WaitForSeconds(.1f);        
+            if (Time.time>= _wallJumpLength)
             {
                 _wallJumpInProgress=false;
                 //Debug.Log("WallJump Deactivated - Timed out");
             }
             
         }
+        previousMove.x = _currentDirectionFaced* (0.5f * _playerSpeed);
+        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerSpeed);
     }
 
     //TODO: Adjust Dashing to be more smooth, similar to wall jump behavior. maybe also set _wallJumpInprogress to be a more universal movement lock.
     //Also make it so if the player collides with a ceiling, they drop back down.
     void Dash()
     {
-        
+        playerVelocity.x= _currentDirectionFaced * _dashImpulse;
+        playerVelocity.y= 0;
+        previousMove = playerVelocity;
+        StartCoroutine(DashOccurring());
     }
 
     IEnumerator DashOccurring()
     {
         _dashInProgress=true;
         _dashLength = Time.time +_dashDelay;
+        //Debug.Log("Dash Activated");
         while(_dashInProgress==true)
         {
-            yield return new WaitForSeconds(.02f);
-            CheckIfOnWall();
-            if(_onWall)
+            
+            yield return new WaitForSeconds(.1f);
+            if (Time.time>= _dashLength)
             {
                 _dashInProgress=false;
-                //Debug.Log("Dash Deactivated - hit another wall");
-            }
-            else if (Time.time>= _dashLength)
-            {
-                _dashInProgress=false;
-                //Debug.Log("Dash Deactivated - Timed out");
+                Debug.Log("Dash Deactivated - Timed out");
             }
         }
+        previousMove.x = _currentDirectionFaced* (0.5f * _playerSpeed);
+        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerSpeed);
     }
 
     /***  START: Check Functions ***************/
@@ -248,6 +260,25 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void WallCheck(ControllerColliderHit potentialWall)
+    {
+            if(potentialWall.normal.x==-1.0f || potentialWall.normal.x ==1.0f)
+            {
+                _onWall=true;
+                if(_dashInProgress)
+                    {_dashInProgress=false; Debug.Log("Dash Deactivated - Wall hit during motion");}
+                if(_wallJumpInProgress)
+                    {_wallJumpInProgress=false; Debug.Log("Walljump Deactivated - Wall hit during motion");}
+            }
+            else
+            {
+                _onWall=false;
+            }
+    }
+
+    /*****  END: Check Functions ***************/
+
+    /* *** Deprecated code: Character Controller's inherently can check if grounded
     private void CheckIfGrounded()
     {
         float heightBuffer = .02f;
@@ -262,24 +293,33 @@ public class PlayerController : MonoBehaviour
         {
             _isGrounded = false;
         }
-
-    }
-
+    } */
+   
+    /* *** Deprecated code: Not stable to use raycasts for these collision checks.
     private void CheckIfOnWall()
     {
-        float distBuffer = .09f;
-        if ((Physics.Raycast(_playerController.bounds.center, Vector3.left,_playerController.bounds.extents.x + distBuffer))
-        || (Physics.Raycast(_playerController.bounds.center, Vector3.right,_playerController.bounds.extents.x + distBuffer)))
+        float distBuffer = .08f;
+        if(!_playerController.isGrounded)
         {
-            _onWall=true;
-            Debug.Log("On Wall");
+            Debug.Log("In Air: Checking walls");
+            if ((Physics.Raycast(_playerController.bounds.center, Vector3.left, _playerController.bounds.extents.x + distBuffer))
+            || (Physics.Raycast(_playerController.bounds.center, Vector3.right, _playerController.bounds.extents.x + distBuffer)))
+            {
+                _onWall=true;
+                Debug.Log("On Wall");
+            }
+            else
+            {
+                _onWall=false;
+            }
         }
         else
         {
             _onWall=false;
         }
-    }
+        
+    }*/
 
-    /*****  END: Check Functions ***************/
+    
 
 }

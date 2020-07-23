@@ -94,9 +94,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _playerSpeed: 6
-  _playerGravity: 0.5
+  _playerGravity: -0.5
   _jumpHeight: 15
-  _dashImpulse: 100
+  _currentDirectionFaced: 1
+  _dashImpulse: 25
 --- !u!143 &863662560
 CharacterController:
   m_ObjectHideFlags: 0
