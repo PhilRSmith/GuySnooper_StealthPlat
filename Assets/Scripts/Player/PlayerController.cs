@@ -22,8 +22,8 @@ public class PlayerController : MonoBehaviour
     /***   END: Player Movement/Gravity Variables ***/
 
     // START:Terrain Checks
-    private bool _isGrounded;
     private bool _onWall = false;
+    private bool _isCrouching = false;
     //   END:Terrain Checks
 
     
@@ -33,9 +33,11 @@ public class PlayerController : MonoBehaviour
     private float _wallJumpLength;
     //
     private bool _dashInProgress = false;
-    private float _dashDelay =.50f;
+    private float _dashDelay =.25f;
     private float _dashCooldown = 3.0f;
+    private bool _isDashOnCooldown = false;
     private float _dashLength;
+    private float _dashVerticalHeightLock;
     [SerializeField]
     private float _dashImpulse = 25.0f;
     /***   END: Abailty Variables **/
@@ -46,19 +48,33 @@ public class PlayerController : MonoBehaviour
         _playerController = GetComponent<CharacterController>();
         if (_playerController == null)
         {
-            Debug.LogError("Player:PlayerController DOES NOT EXIST");
+            Debug.LogError("Player:CharacterController DOES NOT EXIST");
         }
         
     }
     // Update is called once per frame
     void Update()
     {
+
+        if(Input.GetKeyDown(KeyCode.Q))
+        {
+            CrouchControl();
+        }
         Movement();
+ 
     }
 
     void LateUpdate() 
     {
-        transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f);
+        if(_dashInProgress)
+        {   
+            transform.position= new Vector3(transform.position.x, _dashVerticalHeightLock , 0.0f);
+        }
+        else
+        {
+            transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f);
+        }
+        
     }
     void Movement()
     {
@@ -66,26 +82,7 @@ public class PlayerController : MonoBehaviour
         _horizontalInput = Input.GetAxis("Horizontal");
         if(!_playerController.isGrounded) //While player is in air, maintain SOME momentum but don't force full motion if input is released or lowered (more responsive).
         {       
-            if(_horizontalInput>0.1f && _horizontalInput<0.5f)
-            {
-                _horizontalInput=0.5f;
-            }
-            if(_horizontalInput<-0.1f && _horizontalInput> -0.5f)
-            {
-                _horizontalInput=-0.5f;
-            }
-            playerDirection.x = _horizontalInput;
-            if((_wallJumpInProgress==true)
-             ||(_dashInProgress==true)) 
-            {
-                playerVelocity = previousMove;
-                
-            }
-            else 
-            {
-                playerVelocity = playerDirection * _playerSpeed;
-            }
-
+           AerialMovement();
         }
         else
         {
@@ -102,7 +99,6 @@ public class PlayerController : MonoBehaviour
         
         /*Check to see which direction the player is facing */
         
-
         if(Input.GetKeyDown(KeyCode.LeftShift))
         {
             Dash();
@@ -119,20 +115,74 @@ public class PlayerController : MonoBehaviour
 
     void FaceDirectionMoved()
     {
-        if(playerDirection.x!=0)
+        if(playerVelocity.x!=0)
         {
-            transform.rotation = Quaternion.LookRotation(new Vector3(_currentDirectionFaced, 0 , 0));
+            if(playerVelocity.x<0)
+            {
+                transform.rotation = Quaternion.LookRotation(new Vector3((-1*(playerVelocity.x/playerVelocity.x)), 0 , 0));
+            }
+            else
+            {
+                transform.rotation = Quaternion.LookRotation(new Vector3((playerVelocity.x/playerVelocity.x), 0 , 0));
+            }
+        }
+    }
+
+    void AerialMovement()
+    {
+         if(_horizontalInput>0.1f && _horizontalInput<0.5f)
+            {
+                _horizontalInput=0.5f;
+            }
+            if(_horizontalInput<-0.1f && _horizontalInput> -0.5f)
+            {
+                _horizontalInput=-0.5f;
+            }
+            playerDirection.x = _horizontalInput;
+            if((_wallJumpInProgress==true)
+             ||(_dashInProgress==true)) 
+            {
+                playerVelocity = previousMove;
+            }
+            else 
+            {
+                playerVelocity = playerDirection * _playerSpeed;
+            }
+    }
+
+    /*Function to toggle crouch while on the ground*/
+    void CrouchControl()
+    {    
+            if(_isCrouching==false)
+            {
+                _playerController.height = 1;
+                _isCrouching = true;
+            }
+            else if(_isCrouching)
+            {
+                _playerController.height = 2;
+                _isCrouching = false;
+            }  
+    }
+
+    /* Function used to end crouch when beginning some movement abilities like dash */
+    void EndCrouch()
+    {
+        if(_isCrouching)
+        {
+            _playerController.height = 2;
+            _isCrouching = false;
         }
     }
 
     float Jump(float y)
     {
-         /* Jumping behavior START */
         if(_playerController.isGrounded == true)
         {
-            y = -.5f;
+            y = -.5f; //Base Downward velocity to ensure collision with ground for isGrounded checks
             if(Input.GetKeyDown(KeyCode.Space))
             {
+                EndCrouch(); //Cancel crouch if jumping, but we'll allow crouching while airborne for now
                 y+=_jumpHeight;
             } 
         }
@@ -151,14 +201,10 @@ public class PlayerController : MonoBehaviour
                     playerVelocity = previousMove;
                 }
                 else
-                {
-                    
+                {     
                 }
-            }
-            
-            
+            }       
         }
-        /* Jumping behavior END */
         return y;
     }
 
@@ -169,7 +215,7 @@ public class PlayerController : MonoBehaviour
         if(!_playerController.isGrounded)
         {
             //Debug.Log(hit.normal);
-            if(hit.normal.y==-1.0f)
+            if(hit.normal.y==-1.0f) //hits a ceiling
             {   
                 _yVelocity= 3*_playerGravity;
             }
@@ -181,15 +227,7 @@ public class PlayerController : MonoBehaviour
                 {
                     if(_wallJumpInProgress==false)
                     {   
-                        if(((hit.normal.x<0) && _horizontalInput>0) || ((hit.normal.x>0) && _horizontalInput<0))
-                        {   
-                            Debug.DrawRay(hit.point, hit.normal, Color.green, 2.00f);
-                            _yVelocity = _jumpHeight - 2.0f;
-                            Debug.Log(hit.normal);
-                            StartCoroutine(WallJumpOccurring());
-                            playerVelocity= hit.normal * (_playerSpeed);
-                            transform.rotation = Quaternion.LookRotation(hit.normal);
-                        }
+                        WallJump(hit);
                     }
                 }
             }
@@ -197,54 +235,83 @@ public class PlayerController : MonoBehaviour
     }
 
     
-
+    private void WallJump(ControllerColliderHit hit)
+    {
+        if(((hit.normal.x<0) && _horizontalInput>0) || ((hit.normal.x>0) && _horizontalInput<0))
+            {   
+                Debug.DrawRay(hit.point, hit.normal, Color.green, 2.00f);
+                _yVelocity = _jumpHeight - 2.0f;
+                Debug.Log(hit.normal);
+                StartCoroutine(WallJumpOccurring());
+                EndCrouch();
+                playerVelocity= hit.normal * (_playerSpeed);
+                transform.rotation = Quaternion.LookRotation(hit.normal);
+            }
+    }
     /* Coroutine that does continuous checks for the walljump delay period to see if another collision occurred or of the motion times out */
     IEnumerator WallJumpOccurring()
     {
         _wallJumpInProgress=true;
+        _dashInProgress=false;
         _wallJumpLength = Time.time + _wallJumpDelay;
-        //Debug.Log("WallJump Activated");
+        Debug.Log("Player:WallJump Activated");
         while(_wallJumpInProgress==true)
         {   
-            yield return new WaitForSeconds(.1f);        
+            yield return new WaitForSeconds(.05f);        
             if (Time.time>= _wallJumpLength)
             {
                 _wallJumpInProgress=false;
-                //Debug.Log("WallJump Deactivated - Timed out");
+                Debug.Log("Player:WallJump Deactivated - Timed out");
             }
             
         }
         previousMove.x = _currentDirectionFaced* (0.5f * _playerSpeed);
-        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerSpeed);
+        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerSpeed);    
     }
 
-    //TODO: Adjust Dashing to be more smooth, similar to wall jump behavior. maybe also set _wallJumpInprogress to be a more universal movement lock.
-    //Also make it so if the player collides with a ceiling, they drop back down.
     void Dash()
     {
-        playerVelocity.x= _currentDirectionFaced * _dashImpulse;
-        playerVelocity.y= 0;
-        previousMove = playerVelocity;
-        StartCoroutine(DashOccurring());
+        if(_isDashOnCooldown==false)
+        {   
+            if(!_wallJumpInProgress)
+            {    
+                EndCrouch();
+                _dashVerticalHeightLock = transform.position.y;
+                playerVelocity.x= _currentDirectionFaced * _dashImpulse;
+                playerVelocity.y= 0;
+                previousMove = playerVelocity;
+                StartCoroutine(DashOccurring());
+            }
+        }
     }
 
     IEnumerator DashOccurring()
     {
         _dashInProgress=true;
-        _dashLength = Time.time +_dashDelay;
-        //Debug.Log("Dash Activated");
+        _wallJumpInProgress=false;
+        _dashLength = Time.time + _dashDelay;
+        //Debug.Log("Player:Dash Activated");
         while(_dashInProgress==true)
         {
-            
-            yield return new WaitForSeconds(.1f);
+            _yVelocity=0;
+            yield return new WaitForSeconds(.05f);
             if (Time.time>= _dashLength)
             {
                 _dashInProgress=false;
-                Debug.Log("Dash Deactivated - Timed out");
+                Debug.Log("Player:Dash Deactivated - Timed out");
             }
         }
         previousMove.x = _currentDirectionFaced* (0.5f * _playerSpeed);
         playerVelocity.x = _currentDirectionFaced* (0.5f * _playerSpeed);
+        StartCoroutine(DashCooldown());
+    }
+
+    IEnumerator DashCooldown()
+    {
+        Debug.Log("Player:Dash on Cooldown");
+        _isDashOnCooldown = true;
+        yield return new WaitForSeconds(_dashCooldown);
+        _isDashOnCooldown = false;
     }
 
     /***  START: Check Functions ***************/
@@ -262,13 +329,19 @@ public class PlayerController : MonoBehaviour
 
     private void WallCheck(ControllerColliderHit potentialWall)
     {
-            if(potentialWall.normal.x==-1.0f || potentialWall.normal.x ==1.0f)
+            if(potentialWall.normal.x==-1.0f || potentialWall.normal.x == 1.0f)
             {
                 _onWall=true;
                 if(_dashInProgress)
-                    {_dashInProgress=false; Debug.Log("Dash Deactivated - Wall hit during motion");}
+                    {
+                        _dashInProgress=false; Debug.Log("Player:Dash Deactivated - Wall hit during motion");
+                    }
                 if(_wallJumpInProgress)
-                    {_wallJumpInProgress=false; Debug.Log("Walljump Deactivated - Wall hit during motion");}
+                {    
+                        
+                     _wallJumpInProgress=false; Debug.Log("Player:Walljump Deactivated - Wall hit during motion");
+                        
+                }
             }
             else
             {
