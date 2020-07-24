@@ -55,7 +55,6 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
         if(Input.GetKeyDown(KeyCode.Q))
         {
             CrouchControl();
@@ -86,6 +85,15 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
+            if(_isCrouching) //only apply this speed on the ground if crouching
+            {
+                _playerSpeed = 3.6f;
+            }
+            else
+            {
+                _playerSpeed = 6.0f;
+            }
+
             if(_dashInProgress)
             {
                 playerVelocity.x = previousMove.x;
@@ -166,23 +174,26 @@ public class PlayerController : MonoBehaviour
     }
 
     /* Function used to end crouch when beginning some movement abilities like dash */
-    void EndCrouch()
+    IEnumerator EndCrouch()
     {
+        yield return new WaitForSeconds(.08f); //this is a coroutine for animation purposes... maybe. No clue how to animate yet.
         if(_isCrouching)
         {
             _playerController.height = 2;
+            _playerSpeed = 6.0f;
             _isCrouching = false;
         }
     }
+
 
     float Jump(float y)
     {
         if(_playerController.isGrounded == true)
         {
-            y = -.5f; //Base Downward velocity to ensure collision with ground for isGrounded checks
+            y = -0.5f; //Base Downward velocity to ensure collision with ground for isGrounded checks
             if(Input.GetKeyDown(KeyCode.Space))
             {
-                EndCrouch(); //Cancel crouch if jumping, but we'll allow crouching while airborne for now
+                StartCoroutine(EndCrouch()); //Cancel crouch if jumping, but we'll allow crouching while airborne for now
                 y+=_jumpHeight;
             } 
         }
@@ -243,7 +254,7 @@ public class PlayerController : MonoBehaviour
                 _yVelocity = _jumpHeight - 2.0f;
                 Debug.Log(hit.normal);
                 StartCoroutine(WallJumpOccurring());
-                EndCrouch();
+                StartCoroutine(EndCrouch());
                 playerVelocity= hit.normal * (_playerSpeed);
                 transform.rotation = Quaternion.LookRotation(hit.normal);
             }
@@ -275,7 +286,7 @@ public class PlayerController : MonoBehaviour
         {   
             if(!_wallJumpInProgress)
             {    
-                EndCrouch();
+                StartCoroutine(EndCrouch());
                 _dashVerticalHeightLock = transform.position.y;
                 playerVelocity.x= _currentDirectionFaced * _dashImpulse;
                 playerVelocity.y= 0;
