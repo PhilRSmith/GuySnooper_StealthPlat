@@ -6,9 +6,13 @@ public class PlayerController : MonoBehaviour
 {
     /*** START: Player Movement/Gravity Variables ***/
     [SerializeField]
-    private float _playerSpeed=6.0f;
+    private float _playerCurrentSpeed=6.0f;
+    [SerializeField]
+    private float _playerBaseSpeed=6.0f;
+    private float _playerCrouchedSpeed=3.6f;
     [SerializeField]
     private float _playerGravity=-0.5f;
+    private float _maxDownwardVelocity = -20.0f;
     [SerializeField]
     private float _jumpHeight = 10.0f;
     private float _yVelocity=0.0f;
@@ -42,6 +46,10 @@ public class PlayerController : MonoBehaviour
     private float _dashImpulse = 25.0f;
     /***   END: Abailty Variables **/
 
+    /*** START: Other Object Handles ***/
+    private UIManager _uiManager;
+    /***   END: Other Object Handles ***/
+
     // Start is called before the first frame update
     void Start()
     {
@@ -49,6 +57,11 @@ public class PlayerController : MonoBehaviour
         if (_playerController == null)
         {
             Debug.LogError("Player:CharacterController DOES NOT EXIST");
+        }
+        _uiManager = GameObject.Find("Canvas").GetComponent<UIManager>();
+        if (_uiManager == null)
+        {
+            Debug.LogError("Player:UIManager DOES NOT EXIST");
         }
         
     }
@@ -87,11 +100,11 @@ public class PlayerController : MonoBehaviour
         {
             if(_isCrouching) //only apply this speed on the ground if crouching
             {
-                _playerSpeed = 3.6f;
+                _playerCurrentSpeed = _playerCrouchedSpeed;
             }
             else
             {
-                _playerSpeed = 6.0f;
+                _playerCurrentSpeed = _playerBaseSpeed;
             }
 
             if(_dashInProgress)
@@ -101,7 +114,7 @@ public class PlayerController : MonoBehaviour
             else
             {
                 playerDirection.x = _horizontalInput;
-                playerVelocity = playerDirection *_playerSpeed;
+                playerVelocity = playerDirection *_playerCurrentSpeed;
             }
         }
         
@@ -154,7 +167,7 @@ public class PlayerController : MonoBehaviour
             }
             else 
             {
-                playerVelocity = playerDirection * _playerSpeed;
+                playerVelocity = playerDirection * _playerCurrentSpeed;
             }
     }
 
@@ -180,7 +193,7 @@ public class PlayerController : MonoBehaviour
         if(_isCrouching)
         {
             _playerController.height = 2;
-            _playerSpeed = 6.0f;
+            _playerCurrentSpeed = _playerBaseSpeed;
             _isCrouching = false;
         }
     }
@@ -199,8 +212,10 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            y += _playerGravity; /*if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
-
+            if(y>_maxDownwardVelocity)
+            {
+                y += _playerGravity; /*if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
+            }
             if(_wallJumpInProgress)
             {
                 playerVelocity = previousMove;
@@ -255,7 +270,7 @@ public class PlayerController : MonoBehaviour
                 Debug.Log(hit.normal);
                 StartCoroutine(WallJumpOccurring());
                 StartCoroutine(EndCrouch());
-                playerVelocity= hit.normal * (_playerSpeed);
+                playerVelocity= hit.normal * (_playerCurrentSpeed);
                 transform.rotation = Quaternion.LookRotation(hit.normal);
             }
     }
@@ -276,8 +291,8 @@ public class PlayerController : MonoBehaviour
             }
             
         }
-        previousMove.x = _currentDirectionFaced* (0.5f * _playerSpeed);
-        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerSpeed);    
+        previousMove.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
+        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);    
     }
 
     void Dash()
@@ -312,17 +327,20 @@ public class PlayerController : MonoBehaviour
                 Debug.Log("Player:Dash Deactivated - Timed out");
             }
         }
-        previousMove.x = _currentDirectionFaced* (0.5f * _playerSpeed);
-        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerSpeed);
+        previousMove.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
+        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
         StartCoroutine(DashCooldown());
     }
 
     IEnumerator DashCooldown()
     {
+        
         Debug.Log("Player:Dash on Cooldown");
         _isDashOnCooldown = true;
+        _uiManager.DashAvailability(_isDashOnCooldown);
         yield return new WaitForSeconds(_dashCooldown);
         _isDashOnCooldown = false;
+        _uiManager.DashAvailability(_isDashOnCooldown);
     }
 
     /***  START: Check Functions ***************/

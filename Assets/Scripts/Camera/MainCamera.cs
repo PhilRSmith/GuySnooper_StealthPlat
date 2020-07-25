@@ -5,7 +5,7 @@ public class MainCamera : MonoBehaviour
     [SerializeField]
     private Transform _targetPlayer;
     [SerializeField]
-    private Vector3 _cameraDistance = new Vector3(0, 2, -8);
+    private Vector3 _cameraDistance = new Vector3(0, 2, -13);
     public float smoothingSpeed=0.2f;
 
     // Start is called before the first frame update
