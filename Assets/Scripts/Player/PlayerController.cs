@@ -41,7 +41,6 @@ public class PlayerController : MonoBehaviour
     private float _dashCooldown = 3.0f;
     private bool _isDashOnCooldown = false;
     private float _dashLength;
-    private float _dashVerticalHeightLock;
     [SerializeField]
     private float _dashImpulse = 25.0f;
     /***   END: Abailty Variables **/
@@ -49,6 +48,14 @@ public class PlayerController : MonoBehaviour
     /*** START: Other Object Handles ***/
     private UIManager _uiManager;
     /***   END: Other Object Handles ***/
+
+    /* BIG NOTE TO SELF: Careful, the code in here is starting to become a bit confusing for someone to read if uninitiated. try to be more careful with the booleans
+    and spaghetti code!
+    Improvements that could be made:
+    - Make the section within jump() inside the !_isGrounded part of aerial movement
+    - Consolidate related boolean checks into their own functions, e.g. stuff that makes crouch checks or aerial checks etc
+    - Can't think of any more right now, so tired but this needs to be cleaned up if I'm going to actually make a full game
+    */
 
     // Start is called before the first frame update
     void Start()
@@ -62,35 +69,21 @@ public class PlayerController : MonoBehaviour
         if (_uiManager == null)
         {
             Debug.LogError("Player:UIManager DOES NOT EXIST");
-        }
-        
+        }   
     }
     // Update is called once per frame
     void Update()
-    {
-        if(Input.GetKeyDown(KeyCode.Q))
-        {
-            CrouchControl();
-        }
+    {  
+        CrouchControl(); 
         Movement();
- 
     }
 
     void LateUpdate() 
-    {
-        if(_dashInProgress)
-        {   
-            transform.position= new Vector3(transform.position.x, _dashVerticalHeightLock , 0.0f);
-        }
-        else
-        {
-            transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f);
-        }
-        
+    {  
+        transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f); //Keep player from moving on undesired z-axis     
     }
     void Movement()
     {
-        
         _horizontalInput = Input.GetAxis("Horizontal");
         if(!_playerController.isGrounded) //While player is in air, maintain SOME momentum but don't force full motion if input is released or lowered (more responsive).
         {       
@@ -116,20 +109,13 @@ public class PlayerController : MonoBehaviour
                 playerDirection.x = _horizontalInput;
                 playerVelocity = playerDirection *_playerCurrentSpeed;
             }
-        }
-        
-        /*Check to see which direction the player is facing */
-        
-        if(Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            Dash();
-        }
-
+        } 
+        Dash();
         _yVelocity = Jump(_yVelocity);
         playerVelocity.y = _yVelocity;
-        
         DirectionCheck(playerVelocity.x);
         FaceDirectionMoved();
+        
         _playerController.Move(playerVelocity * Time.deltaTime);
         previousMove = playerVelocity;
     }
@@ -151,40 +137,48 @@ public class PlayerController : MonoBehaviour
 
     void AerialMovement()
     {
-         if(_horizontalInput>0.1f && _horizontalInput<0.5f)
-            {
-                _horizontalInput=0.5f;
-            }
-            if(_horizontalInput<-0.1f && _horizontalInput> -0.5f)
-            {
-                _horizontalInput=-0.5f;
-            }
-            playerDirection.x = _horizontalInput;
-            if((_wallJumpInProgress==true)
-             ||(_dashInProgress==true)) 
-            {
-                playerVelocity = previousMove;
-            }
-            else 
-            {
-                playerVelocity = playerDirection * _playerCurrentSpeed;
-            }
+        if(_horizontalInput>0.1f && _horizontalInput<0.5f)
+        {
+            _horizontalInput=0.5f;
+        }
+        if(_horizontalInput<-0.1f && _horizontalInput> -0.5f)
+        {
+            _horizontalInput=-0.5f;
+        }
+        playerDirection.x = _horizontalInput;
+        if((_wallJumpInProgress==true)
+        ||(_dashInProgress==true)) 
+        {
+            playerVelocity = previousMove;
+        }
+        else 
+        {
+            playerVelocity = playerDirection * _playerCurrentSpeed;
+        }
     }
 
     /*Function to toggle crouch while on the ground*/
     void CrouchControl()
-    {    
-            if(_isCrouching==false)
+    {   
+        if(Input.GetKeyDown(KeyCode.Q))
+        {
+            if(_isCrouching)
+            {
+                bool canUncrouch = CheckIfCanUncrouch();
+                if(canUncrouch)
+                {
+                    _playerController.height = 2;
+                    _isCrouching = false;
+                }     
+            }
+            else
             {
                 _playerController.height = 1;
                 _isCrouching = true;
-            }
-            else if(_isCrouching)
-            {
-                _playerController.height = 2;
-                _isCrouching = false;
-            }  
+            } 
+        } 
     }
+
 
     /* Function used to end crouch when beginning some movement abilities like dash */
     IEnumerator EndCrouch()
@@ -206,8 +200,19 @@ public class PlayerController : MonoBehaviour
             y = -0.5f; //Base Downward velocity to ensure collision with ground for isGrounded checks
             if(Input.GetKeyDown(KeyCode.Space))
             {
-                StartCoroutine(EndCrouch()); //Cancel crouch if jumping, but we'll allow crouching while airborne for now
-                y+=_jumpHeight;
+                if(_isCrouching)
+                {   
+                    bool canUncrouch = CheckIfCanUncrouch();
+                    if(canUncrouch)
+                    {
+                        StartCoroutine(EndCrouch()); //Cancel crouch if jumping, but we'll allow crouching while airborne for now
+                        y+=_jumpHeight;
+                    }
+                }
+                else
+                {
+                    y+=_jumpHeight;
+                }
             } 
         }
         else
@@ -237,7 +242,6 @@ public class PlayerController : MonoBehaviour
     private void OnControllerColliderHit(ControllerColliderHit hit) 
     {   
         WallCheck(hit);
-        
         if(!_playerController.isGrounded)
         {
             //Debug.Log(hit.normal);
@@ -257,6 +261,10 @@ public class PlayerController : MonoBehaviour
                     }
                 }
             }
+        }
+        else
+        {
+            
         }
     }
 
@@ -297,16 +305,31 @@ public class PlayerController : MonoBehaviour
 
     void Dash()
     {
-        if(_isDashOnCooldown==false)
-        {   
-            if(!_wallJumpInProgress)
-            {    
-                StartCoroutine(EndCrouch());
-                _dashVerticalHeightLock = transform.position.y;
-                playerVelocity.x= _currentDirectionFaced * _dashImpulse;
-                playerVelocity.y= 0;
-                previousMove = playerVelocity;
-                StartCoroutine(DashOccurring());
+        if(Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            if(_isDashOnCooldown==false)
+            {   
+                if(!_wallJumpInProgress)
+                {   if(_isCrouching) 
+                    {   
+                        bool canUncrouch = CheckIfCanUncrouch();
+                        if(canUncrouch)
+                        {
+                            StartCoroutine(EndCrouch());
+                            playerVelocity.x= _currentDirectionFaced * _dashImpulse;
+                            playerVelocity.y= 0;
+                            previousMove = playerVelocity;
+                            StartCoroutine(DashOccurring());
+                        }
+                    }
+                    else
+                    {
+                        playerVelocity.x= _currentDirectionFaced * _dashImpulse;
+                        playerVelocity.y= 0;
+                        previousMove = playerVelocity;
+                        StartCoroutine(DashOccurring());
+                    }
+                }
             }
         }
     }
@@ -316,7 +339,7 @@ public class PlayerController : MonoBehaviour
         _dashInProgress=true;
         _wallJumpInProgress=false;
         _dashLength = Time.time + _dashDelay;
-        //Debug.Log("Player:Dash Activated");
+        _playerGravity = 0.0f;
         while(_dashInProgress==true)
         {
             _yVelocity=0;
@@ -324,9 +347,10 @@ public class PlayerController : MonoBehaviour
             if (Time.time>= _dashLength)
             {
                 _dashInProgress=false;
-                Debug.Log("Player:Dash Deactivated - Timed out");
+                //Debug.Log("Player:Dash Deactivated - Timed out");
             }
         }
+        _playerGravity = -0.5f;
         previousMove.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
         playerVelocity.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
         StartCoroutine(DashCooldown());
@@ -334,8 +358,6 @@ public class PlayerController : MonoBehaviour
 
     IEnumerator DashCooldown()
     {
-        
-        Debug.Log("Player:Dash on Cooldown");
         _isDashOnCooldown = true;
         _uiManager.DashAvailability(_isDashOnCooldown);
         yield return new WaitForSeconds(_dashCooldown);
@@ -363,12 +385,12 @@ public class PlayerController : MonoBehaviour
                 _onWall=true;
                 if(_dashInProgress)
                     {
-                        _dashInProgress=false; Debug.Log("Player:Dash Deactivated - Wall hit during motion");
+                        _dashInProgress=false; //Debug.Log("Player:Dash Deactivated - Wall hit during motion");
                     }
                 if(_wallJumpInProgress)
                 {    
                         
-                     _wallJumpInProgress=false; Debug.Log("Player:Walljump Deactivated - Wall hit during motion");
+                     _wallJumpInProgress=false; //Debug.Log("Player:Walljump Deactivated - Wall hit during motion");
                         
                 }
             }
@@ -376,6 +398,18 @@ public class PlayerController : MonoBehaviour
             {
                 _onWall=false;
             }
+    }
+
+    bool CheckIfCanUncrouch()
+    {
+        bool canUncrouch = true;
+        RaycastHit hit;
+        if(Physics.Raycast(_playerController.bounds.center, Vector3.up , out hit, _playerController.bounds.extents.y + 1.0f))
+        {
+            Debug.DrawRay(_playerController.bounds.center, Vector3.up * hit.distance, Color.yellow);
+            canUncrouch = false;
+        }
+        return canUncrouch;
     }
 
     /*****  END: Check Functions ***************/
