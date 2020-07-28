@@ -789,6 +789,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player_CController
       objectReference: {fileID: 0}
+    - target: {fileID: 3552643463012666127, guid: 6200f6f88d859804c9faca4d9cf42cae,
+        type: 3}
+      propertyPath: _playerGravity
+      value: -0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 3552643463012666163, guid: 6200f6f88d859804c9faca4d9cf42cae,
         type: 3}
       propertyPath: m_LocalPosition.x

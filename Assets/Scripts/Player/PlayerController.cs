@@ -10,8 +10,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float _playerBaseSpeed=6.0f;
     private float _playerCrouchedSpeed=3.6f;
-    [SerializeField]
+    
+    private float playerBaseGravity=-0.5f;
+    private float playerSlopeForce = 3.0f;
     private float _playerGravity=-0.5f;
+    
     private float _maxDownwardVelocity = -20.0f;
     [SerializeField]
     private float _jumpHeight = 10.0f;
@@ -21,13 +24,15 @@ public class PlayerController : MonoBehaviour
     private Vector3 playerDirection = new Vector3(0.0f, 0.0f , 0.0f);
     Vector3 previousMove = new Vector3(0.0f, 0.0f , 0.0f);
     Vector3 playerVelocity = new Vector3(0.0f, 0.0f , 0.0f);
-    [SerializeField]
+
     private int _currentDirectionFaced = 1;
     /***   END: Player Movement/Gravity Variables ***/
 
     // START:Terrain Checks
+    private float slopeCheckLength = 0.2f;
     private bool _onWall = false;
     private bool _isCrouching = false;
+    private bool _isJumping = false;
     //   END:Terrain Checks
 
     
@@ -51,6 +56,7 @@ public class PlayerController : MonoBehaviour
 
     /* BIG NOTE TO SELF: Careful, the code in here is starting to become a bit confusing for someone to read if uninitiated. try to be more careful with the booleans
     and spaghetti code!
+    
     Improvements that could be made:
     - Make the section within jump() inside the !_isGrounded part of aerial movement
     - Consolidate related boolean checks into their own functions, e.g. stuff that makes crouch checks or aerial checks etc
@@ -65,6 +71,7 @@ public class PlayerController : MonoBehaviour
         {
             Debug.LogError("Player:CharacterController DOES NOT EXIST");
         }
+        
         _uiManager = GameObject.Find("Canvas").GetComponent<UIManager>();
         if (_uiManager == null)
         {
@@ -115,8 +122,13 @@ public class PlayerController : MonoBehaviour
         playerVelocity.y = _yVelocity;
         DirectionCheck(playerVelocity.x);
         FaceDirectionMoved();
-        
         _playerController.Move(playerVelocity * Time.deltaTime);
+       
+        if(_horizontalInput!=0 && OnSlope())
+        {
+            _playerController.Move(Vector3.down * _playerController.height /2 * playerSlopeForce *Time.deltaTime);
+        }
+
         previousMove = playerVelocity;
     }
 
@@ -160,7 +172,7 @@ public class PlayerController : MonoBehaviour
     /*Function to toggle crouch while on the ground*/
     void CrouchControl()
     {   
-        if(Input.GetKeyDown(KeyCode.Q))
+        if(Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.Joystick1Button3))
         {
             if(_isCrouching)
             {
@@ -192,13 +204,14 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
+    //TODO: adjust movement so the player doesn't bounce going down diagonal surfaces
     float Jump(float y)
     {
         if(_playerController.isGrounded == true)
         {
-            y = -0.5f; //Base Downward velocity to ensure collision with ground for isGrounded checks
-            if(Input.GetKeyDown(KeyCode.Space))
+            _isJumping=false;
+            y = -1.0f; //Base Downward velocity to ensure collision with ground for isGrounded checks
+            if(Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Joystick1Button0))
             {
                 if(_isCrouching)
                 {   
@@ -206,11 +219,15 @@ public class PlayerController : MonoBehaviour
                     if(canUncrouch)
                     {
                         StartCoroutine(EndCrouch()); //Cancel crouch if jumping, but we'll allow crouching while airborne for now
+                        y=0;
+                        _isJumping=true;
                         y+=_jumpHeight;
                     }
                 }
                 else
                 {
+                    y=0;
+                    _isJumping=true;
                     y+=_jumpHeight;
                 }
             } 
@@ -253,7 +270,7 @@ public class PlayerController : MonoBehaviour
            
             if(hit.normal.y<0.1f)
             {    
-                if(Input.GetKeyDown(KeyCode.Space))
+                if(Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Joystick1Button0))
                 {
                     if(_wallJumpInProgress==false)
                     {   
@@ -273,9 +290,9 @@ public class PlayerController : MonoBehaviour
     {
         if(((hit.normal.x<0) && _horizontalInput>0) || ((hit.normal.x>0) && _horizontalInput<0))
             {   
-                Debug.DrawRay(hit.point, hit.normal, Color.green, 2.00f);
+                //Debug.DrawRay(hit.point, hit.normal, Color.green, 2.00f);
                 _yVelocity = _jumpHeight - 2.0f;
-                Debug.Log(hit.normal);
+                //Debug.Log(hit.normal);
                 StartCoroutine(WallJumpOccurring());
                 StartCoroutine(EndCrouch());
                 playerVelocity= hit.normal * (_playerCurrentSpeed);
@@ -288,14 +305,14 @@ public class PlayerController : MonoBehaviour
         _wallJumpInProgress=true;
         _dashInProgress=false;
         _wallJumpLength = Time.time + _wallJumpDelay;
-        Debug.Log("Player:WallJump Activated");
+        //Debug.Log("Player:WallJump Activated");
         while(_wallJumpInProgress==true)
         {   
             yield return new WaitForSeconds(.05f);        
             if (Time.time>= _wallJumpLength)
             {
                 _wallJumpInProgress=false;
-                Debug.Log("Player:WallJump Deactivated - Timed out");
+                //Debug.Log("Player:WallJump Deactivated - Timed out");
             }
             
         }
@@ -305,7 +322,7 @@ public class PlayerController : MonoBehaviour
 
     void Dash()
     {
-        if(Input.GetKeyDown(KeyCode.LeftShift))
+        if(Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.Joystick1Button5))
         {
             if(_isDashOnCooldown==false)
             {   
@@ -399,17 +416,41 @@ public class PlayerController : MonoBehaviour
                 _onWall=false;
             }
     }
-
     bool CheckIfCanUncrouch()
     {
-        bool canUncrouch = true;
+        
         RaycastHit hit;
         if(Physics.Raycast(_playerController.bounds.center, Vector3.up , out hit, _playerController.bounds.extents.y + 1.0f))
         {
-            Debug.DrawRay(_playerController.bounds.center, Vector3.up * hit.distance, Color.yellow);
-            canUncrouch = false;
+            //Debug.DrawRay(_playerController.bounds.center, Vector3.up * hit.distance, Color.yellow);
+            return false;
         }
-        return canUncrouch;
+        else
+        {
+            return true;
+        }
+    }
+
+    /* Credit for this function's general structure goes to Youtube user: Acacia Developer. Video used is https://www.youtube.com/watch?v=b7bmNDdYPzU */
+    bool OnSlope()
+    {
+        if(_isJumping)
+        {
+            return false;
+        }
+
+        RaycastHit hit;
+        if(Physics.Raycast(_playerController.bounds.center, Vector3.down, out hit, _playerController.bounds.extents.y + slopeCheckLength))
+        {
+            if(hit.normal != Vector3.up)
+            {
+                //Debug.Log("OnSlope");
+                return true;
+            }
+        }
+        
+        return false;
+        
     }
 
     /*****  END: Check Functions ***************/
