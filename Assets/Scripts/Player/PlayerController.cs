@@ -249,7 +249,8 @@ public class PlayerController : MonoBehaviour
                     playerVelocity = previousMove;
                 }
                 else
-                {     
+                {  
+                       
                 }
             }       
         }
@@ -401,9 +402,9 @@ public class PlayerController : MonoBehaviour
             {
                 _onWall=true;
                 if(_dashInProgress)
-                    {
-                        _dashInProgress=false; //Debug.Log("Player:Dash Deactivated - Wall hit during motion");
-                    }
+                {
+                    _dashInProgress=false; //Debug.Log("Player:Dash Deactivated - Wall hit during motion");
+                }
                 if(_wallJumpInProgress)
                 {    
                         
@@ -418,7 +419,6 @@ public class PlayerController : MonoBehaviour
     }
     bool CheckIfCanUncrouch()
     {
-        
         RaycastHit hit;
         if(Physics.Raycast(_playerController.bounds.center, Vector3.up , out hit, _playerController.bounds.extents.y + 1.0f))
         {
