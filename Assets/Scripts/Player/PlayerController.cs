@@ -62,12 +62,10 @@ public class PlayerController : MonoBehaviour
     and spaghetti code!
     
     Improvements that could be made:
-    - Make the section within jump() inside the !_isGrounded part of aerial movement
     - Consolidate related boolean checks into their own functions, e.g. stuff that makes crouch checks or aerial checks etc
-    - Can't think of any more right now, so tired but this needs to be cleaned up if I'm going to actually make a full game
     */
 
-    // Start is called before the first frame update
+    
     void Start()
     {
         _playerController = GetComponent<CharacterController>();
@@ -82,7 +80,7 @@ public class PlayerController : MonoBehaviour
             Debug.LogError("Player:UIManager DOES NOT EXIST");
         }   
     }
-    // Update is called once per frame
+    
     void Update()
     {  
         if(_onPole==false)
@@ -94,44 +92,28 @@ public class PlayerController : MonoBehaviour
 
     void LateUpdate() 
     {  
-        transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f); //Keep player from moving on undesired z-axis     
+        transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f); //**Keep player from moving on undesired z-axis     
     }
+
     void Movement()
     {
         _horizontalInput = Input.GetAxis("Horizontal");
-        if(!_playerController.isGrounded) //While player is in air, maintain SOME momentum but don't force full motion if input is released or lowered (more responsive).
+        if(_playerController.isGrounded) //**While player is in air, maintain SOME momentum but don't force full motion if input is released or lowered (more responsive).
         {       
-           AerialMovement();
+            GroundSpeedControl();
+            Jump();
         }
         else
         {
-            if(_isCrouching) //only apply this speed on the ground if crouching
-            {
-                _playerCurrentSpeed = _playerCrouchedSpeed;
-            }
-            else
-            {
-                _playerCurrentSpeed = _playerBaseSpeed;
-            }
-
-            if(_dashInProgress)
-            {
-                playerVelocity.x = previousMove.x;
-            }
-            else
-            {
-                playerDirection.x = _horizontalInput;
-                playerVelocity = playerDirection *_playerCurrentSpeed;
-            }
+            AerialMovement();
+            Falling();
         } 
         Dash();
-        _yVelocity = Jump(_yVelocity);
         playerVelocity.y = _yVelocity;
         DirectionCheck(playerVelocity.x);
         FaceDirectionMoved();
         _playerController.Move(playerVelocity * Time.deltaTime);
-       
-        if(_horizontalInput!=0 && OnSlope())
+        if(_horizontalInput!=0 && OnSlope()) //slope behavior control
         {
             _playerController.Move(Vector3.down * _playerController.height /2 * playerSlopeForce *Time.deltaTime);
         }
@@ -158,6 +140,28 @@ public class PlayerController : MonoBehaviour
             {
                 transform.rotation = Quaternion.LookRotation(new Vector3((playerVelocity.x/playerVelocity.x), 0 , 0));
             }
+        }
+    }
+
+    void GroundSpeedControl()
+    {
+        if(_isCrouching) //**only apply this speed on the ground if crouching
+        {
+            _playerCurrentSpeed = _playerCrouchedSpeed;
+        }
+        else
+        {
+            _playerCurrentSpeed = _playerBaseSpeed;
+        }
+
+        if(_dashInProgress)//**This is here since the dash moves based on a coroutine. Needs to keep updating the velocity for a set time.
+        {
+            playerVelocity.x = previousMove.x;
+        }
+        else
+        {
+            playerDirection.x = _horizontalInput;
+            playerVelocity = playerDirection *_playerCurrentSpeed;
         }
     }
 
@@ -190,8 +194,7 @@ public class PlayerController : MonoBehaviour
         {
             if(_isCrouching)
             {
-                bool canUncrouch = CheckIfCanUncrouch();
-                if(canUncrouch)
+                if(CheckIfCanUncrouch()==true)
                 {
                     _playerController.height = 1.5f;
                     _isCrouching = false;
@@ -209,7 +212,7 @@ public class PlayerController : MonoBehaviour
     /* Function used to end crouch when beginning some movement abilities like dash */
     IEnumerator EndCrouch()
     {
-        yield return new WaitForSeconds(.08f); //this is a coroutine for animation purposes... maybe. No clue how to animate yet.
+        yield return new WaitForSeconds(.08f); //**this is a coroutine for animation purposes... maybe. No clue how to animate yet.
         if(_isCrouching)
         {
             _playerController.height = 2;
@@ -218,56 +221,49 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    float Jump(float y)
+    void Jump()
     {
-        if(_playerController.isGrounded == true)
+        _isJumping=false;
+        _yVelocity = -1.0f; //**Base Downward velocity to ensure collision with ground for isGrounded checks
+        if(Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Joystick1Button0))
         {
-            _isJumping=false;
-            y = -1.0f; //Base Downward velocity to ensure collision with ground for isGrounded checks
-            if(Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Joystick1Button0))
-            {
-                if(_isCrouching)
-                {   
-                    bool canUncrouch = CheckIfCanUncrouch();
-                    if(canUncrouch)
-                    {
-                        StartCoroutine(EndCrouch()); //Cancel crouch if jumping, but we'll allow crouching while airborne for now
-                        y=0;
-                        _isJumping=true;
-                        y+=_jumpHeight;
-                    }
-                }
-                else
+            if(_isCrouching)
+            {   
+                if(CheckIfCanUncrouch()==true)
                 {
-                    y=0;
+                    StartCoroutine(EndCrouch()); //**Cancel crouch if jumping, but we'll allow crouching while airborne for now
+                    _yVelocity=0;
                     _isJumping=true;
-                    y+=_jumpHeight;
+                    _yVelocity+=_jumpHeight;
                 }
-            } 
-        }
-        else
-        {
-            if(y>_maxDownwardVelocity)
-            {
-                y += _playerGravity; /*if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
-            }
-            if(_wallJumpInProgress)
-            {
-                playerVelocity = previousMove;
             }
             else
             {
-                if( _horizontalInput<0.1 && _horizontalInput > -0.1)
-                {
-                    playerVelocity = previousMove;
-                }
-                else
-                {  
-                       
-                }
-            }       
+                _yVelocity=0;
+                _isJumping=true;
+                _yVelocity+=_jumpHeight;
+            }
+        }  
+    }
+
+    void Falling()
+    {
+        if(_yVelocity>_maxDownwardVelocity)
+        {
+            _yVelocity += _playerGravity; /*if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
         }
-        return y;
+        if(_wallJumpInProgress)
+        {
+            playerVelocity = previousMove;
+        }
+        else
+        {
+            if( _horizontalInput<0.1 && _horizontalInput > -0.1)
+            {
+                playerVelocity = previousMove;
+            }
+        }       
+        
     }
 
     private void OnControllerColliderHit(ControllerColliderHit hit) 
@@ -276,13 +272,13 @@ public class PlayerController : MonoBehaviour
         if(!_playerController.isGrounded)
         {
             //Debug.Log(hit.normal);
-            if(hit.normal.y==-1.0f) //hits a ceiling
+            if(hit.normal.y==-1.0f) //**hits a ceiling
             {   
                 _yVelocity= 3*_playerGravity;
             }
             
            
-            if(hit.normal.y<0.1f)
+            if(hit.normal.y<0.1f) //**hits a potential wall
             {    
                 if(Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Joystick1Button0))
                 {
@@ -293,13 +289,8 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
-        else
-        {
-            
-        }
     }
 
-    
     private void WallJump(ControllerColliderHit hit)
     {
         if(((hit.normal.x<0) && _horizontalInput>0) || ((hit.normal.x>0) && _horizontalInput<0))
@@ -344,8 +335,7 @@ public class PlayerController : MonoBehaviour
                 if(!_wallJumpInProgress)
                 {   if(_isCrouching) 
                     {   
-                        bool canUncrouch = CheckIfCanUncrouch();
-                        if(canUncrouch)
+                        if(CheckIfCanUncrouch()==true)
                         {
                             StartCoroutine(EndCrouch());
                             playerVelocity.x= _currentDirectionFaced * _dashImpulse;
@@ -436,13 +426,9 @@ public class PlayerController : MonoBehaviour
         RaycastHit hit;
         if(Physics.Raycast(_playerController.bounds.center, Vector3.up , out hit, _playerController.bounds.extents.y + 1.0f))
         {
-            //Debug.DrawRay(_playerController.bounds.center, Vector3.up * hit.distance, Color.yellow);
             return false;
         }
-        else
-        {
-            return true;
-        }
+        return true;
     }
 
     /* Credit for this function's general structure goes to Youtube user: Acacia Developer. Video used is https://www.youtube.com/watch?v=b7bmNDdYPzU */
@@ -458,7 +444,6 @@ public class PlayerController : MonoBehaviour
         {
             if(hit.normal != Vector3.up)
             {
-                //Debug.Log("OnSlope");
                 return true;
             }
         }
