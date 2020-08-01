@@ -5,7 +5,8 @@ using UnityEngine;
 public class Pole : MonoBehaviour
 {
     private PlayerController _player;
-    private CapsuleCollider _poleCollider;
+    private CapsuleCollider _poleCapCollider;
+    private BoxCollider _poleBoxCollider;
     /*
     NOTES: Need a way to have a player enter the collider as a trigger, and by being aerial and pressing B or O or whatever the key is,
     Player will lock position to the pole and be able to traverse vertically up and down it. 
@@ -22,17 +23,22 @@ public class Pole : MonoBehaviour
         {
             Debug.LogError("Pole:PlayerController NOT FOUND");
         }
-        _poleCollider = GetComponent<CapsuleCollider>();
-        if(_poleCollider==null)
+        _poleCapCollider = GetComponent<CapsuleCollider>();
+        if(_poleCapCollider==null)
         {
             Debug.LogError("Pole:CapsuleCollider NOT FOUND");
+        }
+        _poleBoxCollider = GetComponent<BoxCollider>();
+        if(_poleBoxCollider==null)
+        {
+            Debug.LogError("Pole:BoxCollider NOT FOUND");
         }
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+
     }
 
     private void OnTriggerEnter(Collider other)
@@ -42,9 +48,11 @@ public class Pole : MonoBehaviour
             if(_player)
             {
                 Debug.Log("Pole:Collider - Player entered collider");
+                _player.InPoleRange(_poleBoxCollider.bounds.size, transform.position);
                 //Need to have some sort of public function on player that allows them to be locked onto the pole until they jump.
                 //Maybe flip a boolean.
                 //Need a way to send the pole's dimensions/position to the player so that they can move on it?
+                
             }
         }
     }
@@ -56,6 +64,7 @@ public class Pole : MonoBehaviour
             if(_player)
             {
                 Debug.Log("Pole:Collider - Player exited collider");
+                _player.ExitPoleRange();
                 //Need to have some sort of public function on player that disengages them from the pole.
                 //Maybe flip a boolean.
             }

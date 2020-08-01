@@ -33,6 +33,10 @@ public class PlayerController : MonoBehaviour
     private bool _onWall = false;
     private bool _isCrouching = false;
     private bool _isJumping = false;
+    private bool _inRangeOfPole = false;
+    private bool _onPole = false;
+    private Vector3 _poleDimensions;
+    private Vector3 _polePosition;
     //   END:Terrain Checks
 
     
@@ -81,8 +85,11 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {  
-        CrouchControl(); 
-        Movement();
+        if(_onPole==false)
+        {   
+            CrouchControl(); 
+            Movement();
+        }
     }
 
     void LateUpdate() 
@@ -130,6 +137,13 @@ public class PlayerController : MonoBehaviour
         }
 
         previousMove = playerVelocity;
+
+        //TODO: Put in a function to check if player is aerial and hits grab button. this function will lead into pole movement.
+    }
+
+    void LadderAndPoleMovement()
+    {
+        //Function set to dictate movement along a pole the player has locked onto.
     }
 
     void FaceDirectionMoved()
@@ -179,7 +193,7 @@ public class PlayerController : MonoBehaviour
                 bool canUncrouch = CheckIfCanUncrouch();
                 if(canUncrouch)
                 {
-                    _playerController.height = 2;
+                    _playerController.height = 1.5f;
                     _isCrouching = false;
                 }     
             }
@@ -204,7 +218,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    //TODO: adjust movement so the player doesn't bounce going down diagonal surfaces
     float Jump(float y)
     {
         if(_playerController.isGrounded == true)
@@ -300,6 +313,7 @@ public class PlayerController : MonoBehaviour
                 transform.rotation = Quaternion.LookRotation(hit.normal);
             }
     }
+
     /* Coroutine that does continuous checks for the walljump delay period to see if another collision occurred or of the motion times out */
     IEnumerator WallJumpOccurring()
     {
@@ -455,48 +469,29 @@ public class PlayerController : MonoBehaviour
 
     /*****  END: Check Functions ***************/
 
-    /* *** Deprecated code: Character Controller's inherently can check if grounded
-    private void CheckIfGrounded()
-    {
-        float heightBuffer = .02f;
-        
-        //if a collider was hit, we are grounded
-        if (Physics.Raycast(_playerController.bounds.center, Vector3.down, _playerController.bounds.extents.y + heightBuffer)) 
-        {
-            _isGrounded = true;
-            //Debug.Log("Grounded");
-        }
-        else
-        {
-            _isGrounded = false;
-        }
-    } */
-   
-    /* *** Deprecated code: Not stable to use raycasts for these collision checks.
-    private void CheckIfOnWall()
-    {
-        float distBuffer = .08f;
-        if(!_playerController.isGrounded)
-        {
-            Debug.Log("In Air: Checking walls");
-            if ((Physics.Raycast(_playerController.bounds.center, Vector3.left, _playerController.bounds.extents.x + distBuffer))
-            || (Physics.Raycast(_playerController.bounds.center, Vector3.right, _playerController.bounds.extents.x + distBuffer)))
-            {
-                _onWall=true;
-                Debug.Log("On Wall");
-            }
-            else
-            {
-                _onWall=false;
-            }
-        }
-        else
-        {
-            _onWall=false;
-        }
-        
-    }*/
 
-    
+    /***** START: Enemy Interactions ************/
+    public void takeDamage(float damage)
+    {
+
+    }
+    /*****   END: Enemy Interactions ************/
+
+    /***** START: Poles/Pipes/Environment specific movement *****/
+    public void InPoleRange(Vector3 poleBoxCollider, Vector3 poleTransform)
+    {
+        _inRangeOfPole=true;
+        _poleDimensions = poleBoxCollider;
+        _polePosition = poleTransform;
+        Debug.Log("poleSize: " + _poleDimensions + "||polePosition: " + _polePosition);
+    }
+    public void ExitPoleRange()
+    {
+        _inRangeOfPole=false;
+        _poleDimensions = new Vector3(-420,-420,-420);
+        _polePosition = new Vector3(-420,-420,-420);//let's just set these dimensions for now as a code if not in range
+    }
+
+    /*****   END: Poles/Pipes/Environment specific movement *****/
 
 }
