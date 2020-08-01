@@ -35,7 +35,7 @@ public class PlayerController : MonoBehaviour
     private bool _isJumping = false;
     private bool _inRangeOfPole = false;
     private bool _onPole = false;
-    private Vector3 _poleDimensions;
+    private Collider _poleDimensions;
     private Vector3 _polePosition;
     //   END:Terrain Checks
 
@@ -88,11 +88,18 @@ public class PlayerController : MonoBehaviour
             CrouchControl(); 
             Movement();
         }
+        else
+        {
+            LadderAndPoleMovement();
+        }
     }
 
     void LateUpdate() 
     {  
-        transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f); //**Keep player from moving on undesired z-axis     
+        if(_onPole==false)
+        {
+            transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f); //**Keep player from moving on undesired z-axis     
+        }
     }
 
     void Movement()
@@ -119,13 +126,8 @@ public class PlayerController : MonoBehaviour
         }
 
         previousMove = playerVelocity;
+        LadderAndPoleGrab(); //This is at the end because it splits actions off. If initiated, player can no longer fall/jump/move the same way.
 
-        //TODO: Put in a function to check if player is aerial and hits grab button. this function will lead into pole movement.
-    }
-
-    void LadderAndPoleMovement()
-    {
-        //Function set to dictate movement along a pole the player has locked onto.
     }
 
     void FaceDirectionMoved()
@@ -246,7 +248,7 @@ public class PlayerController : MonoBehaviour
         }  
     }
 
-    void Falling()
+    void Falling()//**Activate when aerial
     {
         if(_yVelocity>_maxDownwardVelocity)
         {
@@ -447,9 +449,7 @@ public class PlayerController : MonoBehaviour
                 return true;
             }
         }
-        
-        return false;
-        
+        return false;    
     }
 
     /*****  END: Check Functions ***************/
@@ -463,19 +463,91 @@ public class PlayerController : MonoBehaviour
     /*****   END: Enemy Interactions ************/
 
     /***** START: Poles/Pipes/Environment specific movement *****/
-    public void InPoleRange(Vector3 poleBoxCollider, Vector3 poleTransform)
+    public void InPoleRange(Collider poleBoxCollider, Vector3 poleTransformPos)
     {
         _inRangeOfPole=true;
         _poleDimensions = poleBoxCollider;
-        _polePosition = poleTransform;
-        Debug.Log("poleSize: " + _poleDimensions + "||polePosition: " + _polePosition);
+        _polePosition = poleTransformPos;
+        Debug.Log("poleSize: " + _poleDimensions.bounds.size + " || polePosition: " + _polePosition);
     }
+
     public void ExitPoleRange()
     {
         _inRangeOfPole=false;
-        _poleDimensions = new Vector3(-420,-420,-420);
+        _poleDimensions = null;
         _polePosition = new Vector3(-420,-420,-420);//let's just set these dimensions for now as a code if not in range
     }
+
+    //TODO: Make transition from air to the pole more natural, and not a teleport.
+    void LadderAndPoleGrab()
+    {
+        if(_inRangeOfPole&&Input.GetKey(KeyCode.E) || _inRangeOfPole&&Input.GetKey(KeyCode.Joystick1Button1))
+        {
+            Vector3  posToGrabPole = new Vector3(_polePosition.x, transform.position.y,_polePosition.z); //in case of neither
+            if(transform.position.x<_polePosition.x)
+            {
+                posToGrabPole = new Vector3((_poleDimensions.bounds.center.x - _poleDimensions.bounds.extents.x), transform.position.y,_polePosition.z);
+                transform.rotation = Quaternion.LookRotation(new Vector3(1, 0 , 0));
+                _currentDirectionFaced=1;//**Opposite because movement effectively would be on the side back is facing
+            } 
+            if(transform.position.x>_polePosition.x)
+            {
+                posToGrabPole = new Vector3((_poleDimensions.bounds.center.x + _poleDimensions.bounds.extents.x), transform.position.y,_polePosition.z);
+                transform.rotation = Quaternion.LookRotation(new Vector3(-1, 0 , 0));
+                _currentDirectionFaced=-1; //**Opposite because movement effectively would be on the side back is facing
+            }   
+            
+            _onPole=true;
+            transform.position = posToGrabPole;
+        }
+    }
+    void LadderAndPoleMovement()
+    {
+        float[] yBounds = {(_poleDimensions.bounds.center.y - (_poleDimensions.bounds.size.y/2)) , ((_poleDimensions.bounds.center.y + (_poleDimensions.bounds.size.y/2)-0.5f))};
+        float[] xBounds = {(_poleDimensions.bounds.center.x - _poleDimensions.bounds.extents.x) , (_poleDimensions.bounds.center.x + _poleDimensions.bounds.extents.x)};
+        _horizontalInput = Input.GetAxis("Horizontal");
+        float _verticalInput = Input.GetAxis("Vertical");
+
+        float poleClimbSpeed=4.0f;
+
+        playerVelocity= new Vector3(0, _verticalInput*poleClimbSpeed, 0);
+        _playerController.Move(playerVelocity * Time.deltaTime);
+        if(_horizontalInput>0.1f)
+        {
+            //Debug.Log("Teleport player right");
+            transform.position = new Vector3(xBounds[1],transform.position.y,transform.position.z);
+            transform.rotation = Quaternion.LookRotation(new Vector3(-1, 0 , 0));
+            _currentDirectionFaced=-1; //**Opposite because movement effectively would be on the side back is facing
+        }
+        if(_horizontalInput<-0.1f)
+        {
+            //Debug.Log("Teleport player left");
+            transform.position = new Vector3(xBounds[0],transform.position.y,transform.position.z);
+            transform.rotation = Quaternion.LookRotation(new Vector3(1, 0 , 0));
+            _currentDirectionFaced=1;//**Opposite because movement effectively would be on the side back is facing
+        }
+        
+        if(transform.position.y<yBounds[0])
+        {
+            playerVelocity.y=0;
+            //Debug.Log("Teleport player: LowerBound");
+            transform.position = new Vector3(transform.position.x, yBounds[0], transform.position.z);
+        }
+        if(transform.position.y>yBounds[1])
+        {
+            playerVelocity.y=0;
+            //Debug.Log("Teleport player: UpperBound");
+            transform.position = new Vector3(transform.position.x, yBounds[1], transform.position.z);
+        }
+
+        if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Joystick1Button0))
+        {
+            _yVelocity=(_jumpHeight/1.3f);
+            _onPole=false;
+        }
+        
+    }
+
 
     /*****   END: Poles/Pipes/Environment specific movement *****/
 

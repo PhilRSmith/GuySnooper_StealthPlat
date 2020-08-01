@@ -48,11 +48,19 @@ public class Pole : MonoBehaviour
             if(_player)
             {
                 Debug.Log("Pole:Collider - Player entered collider");
-                _player.InPoleRange(_poleBoxCollider.bounds.size, transform.position);
-                //Need to have some sort of public function on player that allows them to be locked onto the pole until they jump.
-                //Maybe flip a boolean.
-                //Need a way to send the pole's dimensions/position to the player so that they can move on it?
-                
+                _player.InPoleRange(_poleBoxCollider, transform.position);
+            }
+        }
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        if(other.gameObject.tag=="Player")
+        {
+            if(_player)
+            {
+                //Debug.Log("Pole:Collider - Player in collider");
+                _player.InPoleRange(_poleBoxCollider, transform.position);
             }
         }
     }
@@ -65,8 +73,6 @@ public class Pole : MonoBehaviour
             {
                 Debug.Log("Pole:Collider - Player exited collider");
                 _player.ExitPoleRange();
-                //Need to have some sort of public function on player that disengages them from the pole.
-                //Maybe flip a boolean.
             }
         }
     }
