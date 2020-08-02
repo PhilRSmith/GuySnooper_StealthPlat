@@ -53,6 +53,7 @@ public class Pole : MonoBehaviour
         }
     }
 
+    /*
     private void OnTriggerStay(Collider other)
     {
         if(other.gameObject.tag=="Player")
@@ -63,7 +64,7 @@ public class Pole : MonoBehaviour
                 _player.InPoleRange(_poleBoxCollider, transform.position);
             }
         }
-    }
+    }*/
     
     private void OnTriggerExit(Collider other)
     {

@@ -120,13 +120,13 @@ public class PlayerController : MonoBehaviour
         DirectionCheck(playerVelocity.x);
         FaceDirectionMoved();
         _playerController.Move(playerVelocity * Time.deltaTime);
-        if(_horizontalInput!=0 && OnSlope()) //slope behavior control
+        if(_horizontalInput!=0 && OnSlope()) //**slope behavior control
         {
             _playerController.Move(Vector3.down * _playerController.height /2 * playerSlopeForce *Time.deltaTime);
         }
 
         previousMove = playerVelocity;
-        LadderAndPoleGrab(); //This is at the end because it splits actions off. If initiated, player can no longer fall/jump/move the same way.
+        LadderAndPoleGrab(); //**This is at the end because it splits actions off. If initiated, player can no longer fall/jump/move the same way.
 
     }
 
@@ -252,7 +252,7 @@ public class PlayerController : MonoBehaviour
     {
         if(_yVelocity>_maxDownwardVelocity)
         {
-            _yVelocity += _playerGravity; /*if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
+            _yVelocity += _playerGravity; /**if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
         }
         if(_wallJumpInProgress)
         {
@@ -307,7 +307,7 @@ public class PlayerController : MonoBehaviour
             }
     }
 
-    /* Coroutine that does continuous checks for the walljump delay period to see if another collision occurred or of the motion times out */
+    /** Coroutine that does continuous checks for the walljump delay period to see if another collision occurred or of the motion times out */
     IEnumerator WallJumpOccurring()
     {
         _wallJumpInProgress=true;
@@ -433,7 +433,7 @@ public class PlayerController : MonoBehaviour
         return true;
     }
 
-    /* Credit for this function's general structure goes to Youtube user: Acacia Developer. Video used is https://www.youtube.com/watch?v=b7bmNDdYPzU */
+    /** Credit for this function's general structure goes to Youtube user: Acacia Developer. Video used is https://www.youtube.com/watch?v=b7bmNDdYPzU */
     bool OnSlope()
     {
         if(_isJumping)
@@ -456,7 +456,7 @@ public class PlayerController : MonoBehaviour
 
 
     /***** START: Enemy Interactions ************/
-    public void takeDamage(float damage)
+    public void PlayerTakeDamage(float damage)
     {
 
     }
@@ -475,7 +475,7 @@ public class PlayerController : MonoBehaviour
     {
         _inRangeOfPole=false;
         _poleDimensions = null;
-        _polePosition = new Vector3(-420,-420,-420);//let's just set these dimensions for now as a code if not in range
+        _polePosition = new Vector3(-420,-420,-420);//**let's just set these dimensions for now as a code if not in range
     }
 
     //TODO: Make transition from air to the pole more natural, and not a teleport.
@@ -501,18 +501,48 @@ public class PlayerController : MonoBehaviour
             transform.position = posToGrabPole;
         }
     }
+    //TODO: Allow for diagonal movement on a pole
     void LadderAndPoleMovement()
     {
-        float[] yBounds = {(_poleDimensions.bounds.center.y - (_poleDimensions.bounds.size.y/2)) , ((_poleDimensions.bounds.center.y + (_poleDimensions.bounds.size.y/2)-0.5f))};
+        float[] yBounds = {(_poleDimensions.bounds.center.y - (_poleDimensions.bounds.size.y/2.0f)) , ((_poleDimensions.bounds.center.y + (_poleDimensions.bounds.size.y/2)-0.5f))};
         float[] xBounds = {(_poleDimensions.bounds.center.x - _poleDimensions.bounds.extents.x) , (_poleDimensions.bounds.center.x + _poleDimensions.bounds.extents.x)};
         _horizontalInput = Input.GetAxis("Horizontal");
         float _verticalInput = Input.GetAxis("Vertical");
 
         float poleClimbSpeed=4.0f;
 
-        playerVelocity= new Vector3(0, _verticalInput*poleClimbSpeed, 0);
+        playerVelocity= new Vector3(0, _verticalInput*poleClimbSpeed, 0); //**Tentative, must change to work on diagonal space
+        previousMove.x = 0f;
         _playerController.Move(playerVelocity * Time.deltaTime);
-        if(_horizontalInput>0.1f)
+       
+        SwitchSideOnPole(xBounds);
+        BoundsOnPole(yBounds);
+        if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Joystick1Button0))
+        {
+            JumpOffPole();
+        }
+        
+    }
+
+    void BoundsOnPole(float[] yBounds)
+    {
+         if(transform.position.y<yBounds[0])
+        {
+            playerVelocity.y=0;
+            //Debug.Log("Teleport player: LowerBound");
+            transform.position = new Vector3(transform.position.x, yBounds[0], transform.position.z);
+        }
+        if(transform.position.y>yBounds[1])
+        {
+            playerVelocity.y=0;
+            //Debug.Log("Teleport player: UpperBound");
+            transform.position = new Vector3(transform.position.x, yBounds[1], transform.position.z);
+        }
+    }
+
+    void SwitchSideOnPole(float[] xBounds)
+    {
+         if(_horizontalInput>0.1f)
         {
             //Debug.Log("Teleport player right");
             transform.position = new Vector3(xBounds[1],transform.position.y,transform.position.z);
@@ -526,26 +556,20 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.LookRotation(new Vector3(1, 0 , 0));
             _currentDirectionFaced=1;//**Opposite because movement effectively would be on the side back is facing
         }
-        
-        if(transform.position.y<yBounds[0])
-        {
-            playerVelocity.y=0;
-            //Debug.Log("Teleport player: LowerBound");
-            transform.position = new Vector3(transform.position.x, yBounds[0], transform.position.z);
-        }
-        if(transform.position.y>yBounds[1])
-        {
-            playerVelocity.y=0;
-            //Debug.Log("Teleport player: UpperBound");
-            transform.position = new Vector3(transform.position.x, yBounds[1], transform.position.z);
-        }
+    }
 
-        if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Joystick1Button0))
+    void JumpOffPole()
+    {
+        if(_playerController.isGrounded)
         {
-            _yVelocity=(_jumpHeight/1.3f);
             _onPole=false;
         }
-        
+        else
+        {
+            _yVelocity=(_jumpHeight/1.3f);
+            previousMove.x = _currentDirectionFaced * -4.5f; //**if the player has no input on exiting pole, previous move dictates x-motion (for maintaining momentum)
+            _onPole=false;
+        }
     }
 
 
