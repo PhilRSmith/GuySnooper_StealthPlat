@@ -7,6 +7,8 @@ public class Pole : MonoBehaviour
     private PlayerController _player;
     private CapsuleCollider _poleCapCollider;
     private BoxCollider _poleBoxCollider;
+    private Vector3 _unitDirectionVector;
+    private Vector3[] _poleBounds;
     /*
     NOTES: Need a way to have a player enter the collider as a trigger, and by being aerial and pressing B or O or whatever the key is,
     Player will lock position to the pole and be able to traverse vertically up and down it. 
@@ -33,8 +35,27 @@ public class Pole : MonoBehaviour
         {
             Debug.LogError("Pole:BoxCollider NOT FOUND");
         }
+
+        _unitDirectionVector = DirectionOfPole();
+        _poleBounds = PoleBounds();
     }
 
+    Vector3 DirectionOfPole()
+    {
+        Vector3 directionVector, poleBase, poleTop;
+        poleBase = this.gameObject.transform.Find("Base").position;
+        poleTop = this.gameObject.transform.Find("Top").position;
+        directionVector = poleTop - poleBase;
+        float denominatorScalar = Mathf.Sqrt((directionVector.x*directionVector.x) + (directionVector.y*directionVector.y) + (directionVector.z*directionVector.z));
+        directionVector = directionVector/denominatorScalar;
+        return directionVector;
+    }
+
+    Vector3[] PoleBounds()
+    {
+        Vector3[] bounds = {this.gameObject.transform.Find("Base").position, this.gameObject.transform.Find("Top").position};
+        return bounds;
+    }
     // Update is called once per frame
     void Update()
     {
@@ -48,23 +69,22 @@ public class Pole : MonoBehaviour
             if(_player)
             {
                 Debug.Log("Pole:Collider - Player entered collider");
-                _player.InPoleRange(_poleBoxCollider, transform.position);
+                _player.InPoleRange(transform.position , _unitDirectionVector, _poleBounds);
             }
         }
     }
 
-    /*
+    
     private void OnTriggerStay(Collider other)
     {
         if(other.gameObject.tag=="Player")
         {
             if(_player)
             {
-                //Debug.Log("Pole:Collider - Player in collider");
-                _player.InPoleRange(_poleBoxCollider, transform.position);
+                _player.InPoleRange(transform.position, _unitDirectionVector, _poleBounds);
             }
         }
-    }*/
+    }
     
     private void OnTriggerExit(Collider other)
     {
@@ -77,4 +97,5 @@ public class Pole : MonoBehaviour
             }
         }
     }
+
 }

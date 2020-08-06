@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Collectible
   - Platform
+  - Pole
   layers:
   - Default
   - TransparentFX
