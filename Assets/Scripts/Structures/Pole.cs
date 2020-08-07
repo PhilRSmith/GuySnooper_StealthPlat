@@ -9,14 +9,7 @@ public class Pole : MonoBehaviour
     private BoxCollider _poleBoxCollider;
     private Vector3 _unitDirectionVector;
     private Vector3[] _poleBounds;
-    /*
-    NOTES: Need a way to have a player enter the collider as a trigger, and by being aerial and pressing B or O or whatever the key is,
-    Player will lock position to the pole and be able to traverse vertically up and down it. 
-    When locking to position, the Z-Transform.position lock needs to be temporarily released.
-    Need to establish foreground, background, and default layers on the field.
-    If the Player turns (left or right movement), the player moves to that side of the pole.
-    If the player jumps off the pole (the pole must be in one of the 3 layers), they stay in the layer, and move in the direction they held or previously moved in.
-    */
+    
     // Start is called before the first frame update
     void Start()
     {
@@ -68,7 +61,7 @@ public class Pole : MonoBehaviour
         {
             if(_player)
             {
-                Debug.Log("Pole:Collider - Player entered collider");
+                //Debug.Log("Pole:Collider - Player entered collider");
                 _player.InPoleRange(transform.position , _unitDirectionVector, _poleBounds);
             }
         }
@@ -92,7 +85,7 @@ public class Pole : MonoBehaviour
         {
             if(_player)
             {
-                Debug.Log("Pole:Collider - Player exited collider");
+                //Debug.Log("Pole:Collider - Player exited collider");
                 _player.ExitPoleRange();
             }
         }

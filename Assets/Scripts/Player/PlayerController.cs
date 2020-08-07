@@ -32,7 +32,8 @@ public class PlayerController : MonoBehaviour
     private float slopeCheckLength = 0.2f;
     private bool _onWall = false;
     private bool _isCrouching = false;
-    private bool _isJumping = false;
+    public bool _isJumping = false; //** This is public so platforms know when to let go of player.
+    //**Poles
     private bool _inRangeOfPole = false;
     private bool _onPole = false;
     private Collider _poleDimensions;
@@ -40,6 +41,10 @@ public class PlayerController : MonoBehaviour
     private RaycastHit _poleContact;
     private Vector3[] _poleBounds;
     private Vector3 _poleDirectionVector;
+    //**Spires
+    private bool _inRangeOfSpire = false;
+    private Vector3 _nearestSpirePosition;
+    private bool _onSpire = false;
     //   END:Terrain Checks
 
     
@@ -86,20 +91,24 @@ public class PlayerController : MonoBehaviour
     
     void Update()
     {  
-        if(_onPole==false)
+        if((_onPole==false) && (_onSpire == false))
         {   
             CrouchControl(); 
             Movement();
         }
-        else
+        else if((_onPole == true) && (_onSpire == false))
         {
             LadderAndPoleMovement();
+        }
+        else if((_onPole == false) && (_onSpire == true))
+        {
+            OnTheSpire();
         }
     }
 
     void LateUpdate() 
     {  
-        if(_onPole==false)
+        if(_onPole==false&&_onSpire==false)
         {
             transform.position= new Vector3(transform.position.x, transform.position.y , 0.0f); //**Keep player from moving on undesired z-axis     
         }
@@ -129,7 +138,16 @@ public class PlayerController : MonoBehaviour
         }
 
         previousMove = playerVelocity;
-        LadderAndPoleGrab(); //**This is at the end because it splits actions off. If initiated, player can no longer fall/jump/move the same way.
+        //**This is at the end because it splits actions off. If initiated, player can no longer fall/jump/move the same way.
+        if(_onSpire==false)
+        {
+            LadderAndPoleGrab();
+        }
+        if(_onPole==false)
+        {
+            JumpOnSpire();
+        }    
+        
 
     }
 
@@ -432,12 +450,12 @@ public class PlayerController : MonoBehaviour
                 {
                     _dashInProgress=false; //Debug.Log("Player:Dash Deactivated - Wall hit during motion");
                 }
-                if(_wallJumpInProgress)
+                /*if(_wallJumpInProgress)
                 {    
                         
-                     _wallJumpInProgress=false; //Debug.Log("Player:Walljump Deactivated - Wall hit during motion");
+                    _wallJumpInProgress=false; //Debug.Log("Player:Walljump Deactivated - Wall hit during motion");
                         
-                }
+                }*/
             }
             else
             {
@@ -484,6 +502,8 @@ public class PlayerController : MonoBehaviour
     /*****   END: Enemy Interactions ************/
 
     /***** START: Poles/Pipes/Environment specific movement *****/
+    
+    //**Poles:
     public void InPoleRange(Vector3 poleTransformPos , Vector3 poleDirectionVector, Vector3[] poleBounds)
     {
         Vector3 directionToPole = (Vector3.forward);
@@ -505,7 +525,7 @@ public class PlayerController : MonoBehaviour
 
     public void ExitPoleRange()
     {
-        Debug.Log("Exiting PoleRange");
+        //Debug.Log("Exiting PoleRange");
         _inRangeOfPole=false;
         _poleDimensions = null;
         _posToGrabPole= new Vector3(0,0,0);
@@ -520,26 +540,24 @@ public class PlayerController : MonoBehaviour
             {   
                 transform.rotation = Quaternion.LookRotation(new Vector3(0, 0 , 1));
                 _currentDirectionFaced=0;//**Opposite because movement effectively would be on the side back is facing 
-                _onPole=true;
+                _onPole=true; _onSpire=false;
                 previousMove.x = 0f; 
                 transform.position = _posToGrabPole;
             }
         }
     }
-    //TODO: Allow for diagonal movement on a pole. maybe get vector from bottom to top of collider and move along that unit vector?
+    
     void LadderAndPoleMovement()
     {
-       
         _horizontalInput = Input.GetAxis("Horizontal");
         float _verticalInput = Input.GetAxis("Vertical");
-
         if(_horizontalInput>0)
         {
-            _currentDirectionFaced= -1;
+            _currentDirectionFaced = 1;
         }
-        else
+        if(_horizontalInput<0)
         {
-            _currentDirectionFaced= 1;
+            _currentDirectionFaced= -1;
         }
         float poleClimbSpeed=4.0f;
         playerVelocity = _verticalInput * (poleClimbSpeed*_poleDirectionVector);
@@ -612,10 +630,72 @@ public class PlayerController : MonoBehaviour
         else
         {
             _yVelocity=(_jumpHeight/1.1f);
-            previousMove.x = _currentDirectionFaced * -4.5f; //**if the player has no input on exiting pole, previous move dictates x-motion (for maintaining momentum)
+            previousMove.x = _currentDirectionFaced * 4.5f; //**if the player has no input on exiting pole, previous move dictates x-motion (for maintaining momentum)
             _onPole=false;
             ExitPoleRange();
         }
+    }
+
+    //**Spires:
+
+    public void InSpireRange(Vector3 spirePosition)
+    {
+        _inRangeOfSpire = true;
+        if(_onSpire==false)
+        {
+            if(_nearestSpirePosition == new Vector3(-420,-420,-420))
+            {
+                _nearestSpirePosition = spirePosition;
+            }
+            if((Vector3.Distance(_nearestSpirePosition , transform.position))>(Vector3.Distance(spirePosition , transform.position)))
+            {
+                _nearestSpirePosition = spirePosition;
+            }
+        }   
+    }
+
+    public void ExitSpireRange()
+    {
+        _inRangeOfSpire = false;
+        _nearestSpirePosition = new Vector3(-420,-420,-420);
+    }
+
+    private void JumpOnSpire()
+    {
+        if(_inRangeOfSpire&&Input.GetKey(KeyCode.E) || _inRangeOfSpire&&Input.GetKey(KeyCode.Joystick1Button1))
+        {
+            transform.position = _nearestSpirePosition;
+            _onSpire=true;_onPole=false;
+        }
+    }
+
+    private void OnTheSpire()
+    {
+        _horizontalInput = Input.GetAxis("Horizontal");
+        transform.position = _nearestSpirePosition;
+        if(_horizontalInput>0)
+        {
+            _currentDirectionFaced = 1;
+            transform.rotation = Quaternion.LookRotation(new Vector3(_currentDirectionFaced, 0 , 0));
+        }
+        if(_horizontalInput<0)
+        {
+            _currentDirectionFaced= -1;
+            transform.rotation = Quaternion.LookRotation(new Vector3(_currentDirectionFaced, 0 , 0));
+        }
+
+        if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Joystick1Button0))
+        {
+            JumpOffSpire();
+        }
+    }
+
+    private void JumpOffSpire()
+    {
+        _yVelocity=_jumpHeight;
+        previousMove.x = _currentDirectionFaced * 4.5f; //**if the player has no input on exiting pole, previous move dictates x-motion (for maintaining momentum)
+        _onSpire=false;
+        ExitSpireRange();
     }
 
 
