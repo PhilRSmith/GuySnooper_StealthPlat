@@ -10,6 +10,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float _playerBaseSpeed=6.0f;
     private float _playerCrouchedSpeed=3.6f;
+    private float _playerHeight = 2.0f;
+    private float _playerCrouchedHeight = 1.2f;
     
     private float playerBaseGravity=-0.5f;
     private float playerSlopeForce = 3.0f;
@@ -45,6 +47,8 @@ public class PlayerController : MonoBehaviour
     private bool _inRangeOfSpire = false;
     private Vector3 _nearestSpirePosition;
     private bool _onSpire = false;
+    //**Platforms
+    public bool _onPlatform = false;
     //   END:Terrain Checks
 
     
@@ -219,13 +223,13 @@ public class PlayerController : MonoBehaviour
             {
                 if(CheckIfCanUncrouch()==true)
                 {
-                    _playerController.height = 1.5f;
+                    _playerController.height = _playerHeight;
                     _isCrouching = false;
                 }     
             }
             else
             {
-                _playerController.height = 1;
+                _playerController.height = _playerCrouchedHeight;
                 _isCrouching = true;
             } 
         } 
@@ -238,7 +242,7 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(.08f); //**this is a coroutine for animation purposes... maybe. No clue how to animate yet.
         if(_isCrouching)
         {
-            _playerController.height = 2;
+            _playerController.height = _playerHeight;
             _playerCurrentSpeed = _playerBaseSpeed;
             _isCrouching = false;
         }
@@ -696,6 +700,21 @@ public class PlayerController : MonoBehaviour
         previousMove.x = _currentDirectionFaced * 4.5f; //**if the player has no input on exiting pole, previous move dictates x-motion (for maintaining momentum)
         _onSpire=false;
         ExitSpireRange();
+    }
+
+    //**Platforms:
+
+    public void SetVerticalWhileOnPlatform(float platformSpeed)
+    {
+        _yVelocity = -2.0f * platformSpeed;
+    }
+    public void ResetVertical()
+    {
+        if(_isJumping==false)
+        {
+            _yVelocity = 0;
+        }
+        
     }
 
 

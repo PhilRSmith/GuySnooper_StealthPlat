@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MovingPlatformA : MonoBehaviour
+public class Platform_Manager : MonoBehaviour
 {
-    private PlayerController _player;
+    private GameObject _player;
+    [SerializeField]
+    private GameObject _parentObject;
     private Vector3 _platDirection;
+    private float _platSpeed = 1.0f;
     /* Directions for Switch
             1
         4       2
@@ -23,11 +26,15 @@ public class MovingPlatformA : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        _directionSwitch = 1; //going up first
-        _player = GameObject.Find("ProtoCat_Controller").GetComponent<PlayerController>();
-         if(_player==null)
+        _directionSwitch = 1; //Initial direction
+        _player = GameObject.FindWithTag("Player");
+        if(_player==null)
         {
             Debug.LogError("Platform:PlayerController NOT FOUND");
+        }
+        if(_parentObject==null)
+        {
+            Debug.LogError("Platform:ParentPlatform NOT FOUND");
         }
     }
 
@@ -77,7 +84,7 @@ public class MovingPlatformA : MonoBehaviour
         }
         /*Simple Platform Movement for testing*/
         AlternateUpAndDown();
-        transform.Translate(_platDirection*Time.deltaTime);
+        _parentObject.transform.Translate(_platDirection*_platSpeed*Time.deltaTime);
     }
 
     private void AlternateUpAndDown()
@@ -96,13 +103,41 @@ public class MovingPlatformA : MonoBehaviour
             }
         }
     }
+
+    private void AlternateRightAndLeft()
+    {
+        if(Time.time>_alternationSwitchTime)
+        {
+            if(_goingRight)
+            {
+                _directionSwitch = 4;
+                _goingRight = false;
+            }
+            if(_goingLeft)
+            {
+                _directionSwitch = 2;
+                _goingLeft= false;
+            }
+        }
+    }
     
-    void OnCollisionEnter(Collision other)
+    private void OnTriggerEnter(Collider other) 
     {
         if(other.gameObject.tag=="Player")
         {
-            Debug.Log("Player on Platform");
-            _player.transform.parent = transform;
+            //Debug.Log("Player on Platform");
+            _player.transform.parent = _parentObject.transform;
+            _player.GetComponent<PlayerController>().SetVerticalWhileOnPlatform(_platSpeed);
+        }
+    }
+
+    private void OnTriggerExit(Collider other) 
+    {
+        if(other.gameObject.tag=="Player")
+        {
+            //Debug.Log("Player off Platform");
+            _player.transform.parent = null;
+            _player.GetComponent<PlayerController>().ResetVertical();
         }
     }
     

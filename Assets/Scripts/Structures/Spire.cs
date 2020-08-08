@@ -10,7 +10,7 @@ public class Spire : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        _player = GameObject.Find("ProtoCat_Controller").GetComponent<PlayerController>();
+        _player = GameObject.FindWithTag("Player").GetComponent<PlayerController>();
         if(_player==null)
         {
             Debug.LogError("Spire:PlayerController NOT FOUND");
