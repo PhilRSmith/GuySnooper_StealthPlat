@@ -6,9 +6,9 @@ public class PlayerController : MonoBehaviour
 {
     /*** START: Player Movement/Gravity Variables ***/
     [SerializeField]
-    private float _playerCurrentSpeed=6.0f;
+    private float _playerCurrentBaseSpeed=6.0f;
     [SerializeField]
-    private float _playerBaseSpeed=6.0f;
+    private float _playerDefaultBaseSpeed=6.0f;
     private float _playerCrouchedSpeed=3.6f;
     private float _playerHeight = 2.0f;
     private float _playerCrouchedHeight = 1.2f;
@@ -174,11 +174,11 @@ public class PlayerController : MonoBehaviour
     {
         if(_isCrouching) //**only apply this speed on the ground if crouching
         {
-            _playerCurrentSpeed = _playerCrouchedSpeed;
+            _playerCurrentBaseSpeed = _playerCrouchedSpeed;
         }
         else
         {
-            _playerCurrentSpeed = _playerBaseSpeed;
+            _playerCurrentBaseSpeed = _playerDefaultBaseSpeed;
         }
 
         if(_dashInProgress)//**This is here since the dash moves based on a coroutine. Needs to keep updating the velocity for a set time.
@@ -188,7 +188,7 @@ public class PlayerController : MonoBehaviour
         else
         {
             playerDirection.x = _horizontalInput;
-            playerVelocity = playerDirection *_playerCurrentSpeed;
+            playerVelocity = playerDirection *_playerCurrentBaseSpeed;
         }
     }
 
@@ -210,7 +210,7 @@ public class PlayerController : MonoBehaviour
         }
         else 
         {
-            playerVelocity = playerDirection * _playerCurrentSpeed;
+            playerVelocity = playerDirection * _playerCurrentBaseSpeed;
         }
     }
 
@@ -243,7 +243,7 @@ public class PlayerController : MonoBehaviour
         if(_isCrouching)
         {
             _playerController.height = _playerHeight;
-            _playerCurrentSpeed = _playerBaseSpeed;
+            _playerCurrentBaseSpeed = _playerDefaultBaseSpeed;
             _isCrouching = false;
         }
     }
@@ -341,7 +341,7 @@ public class PlayerController : MonoBehaviour
                 //Debug.Log(hit.normal);
                 StartCoroutine(WallJumpOccurring());
                 StartCoroutine(EndCrouch());
-                playerVelocity= hit.normal * (_playerCurrentSpeed);
+                playerVelocity= hit.normal * (_playerCurrentBaseSpeed);
                 transform.rotation = Quaternion.LookRotation(hit.normal);
             }
     }
@@ -363,8 +363,8 @@ public class PlayerController : MonoBehaviour
             }
             
         }
-        previousMove.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
-        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);    
+        previousMove.x = _currentDirectionFaced* (0.5f * _playerCurrentBaseSpeed);
+        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerCurrentBaseSpeed);    
     }
 
     void Dash()
@@ -418,8 +418,8 @@ public class PlayerController : MonoBehaviour
             }
         }
         _playerGravity = -0.5f;
-        previousMove.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
-        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerCurrentSpeed);
+        previousMove.x = _currentDirectionFaced* (0.5f * _playerCurrentBaseSpeed);
+        playerVelocity.x = _currentDirectionFaced* (0.5f * _playerCurrentBaseSpeed);
         StartCoroutine(DashCooldown());
     }
 
@@ -661,7 +661,7 @@ public class PlayerController : MonoBehaviour
     public void ExitSpireRange()
     {
         _inRangeOfSpire = false;
-        _nearestSpirePosition = new Vector3(-420,-420,-420);
+        _nearestSpirePosition = new Vector3(-420,-420,-420); // Just a random vector position value that the player won't access.
     }
 
     private void JumpOnSpire()
@@ -669,7 +669,7 @@ public class PlayerController : MonoBehaviour
         if(_inRangeOfSpire&&Input.GetKey(KeyCode.E) || _inRangeOfSpire&&Input.GetKey(KeyCode.Joystick1Button1))
         {
             transform.position = _nearestSpirePosition;
-            _onSpire=true;_onPole=false;
+            _onSpire=true;_onPole=false; // important double check to ensure movement types are controlled based on terrain.
         }
     }
 
@@ -706,7 +706,7 @@ public class PlayerController : MonoBehaviour
 
     public void SetVerticalWhileOnPlatform(float platformSpeed)
     {
-        _yVelocity = -2.0f * platformSpeed;
+        _yVelocity = -3.0f * platformSpeed;
     }
     public void ResetVertical()
     {
