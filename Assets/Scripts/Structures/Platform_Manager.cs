@@ -5,13 +5,13 @@ using UnityEngine;
 /*
 *Simple platform manager that can be attached to a platform object and used in unity editor to designate a specific direction using degrees to move in
 *Allows a speed for the platform to also be specified in the unity editor
-*TODO:Accounts for the playercontroller being on the platform and makes it move with itself smoothly.
+*Accounts for the playercontroller being on the platform and makes it move with itself smoothly.
+*This requires the collision box of this manager to rise about a quarter to one half the player colliders height above its surface
 */
 public class Platform_Manager : MonoBehaviour
 {
     private GameObject _player;
     private bool _playerOnPlatform = false;
-    private Vector3 _playerMovementOffset = new Vector3(0,0,0);
     [SerializeField]
     private GameObject _parentObject;
     [SerializeField]
@@ -38,7 +38,7 @@ public class Platform_Manager : MonoBehaviour
         }
 
         /*Setting the degree direction specified to cartesian coordinates for platform movement.*/
-        float directionInRadians = _platDirectionDegrees * ( Mathf.PI / ((float)180.0));
+        float directionInRadians = _platDirectionDegrees * ( Mathf.PI / 180.0f);
         float cartX_direction = Mathf.Cos(directionInRadians);
         float cartY_direction = Mathf.Sin(directionInRadians);
         _platBaseCartesianDirection.x = cartX_direction; _platBaseCartesianDirection.y = cartY_direction; _platBaseCartesianDirection.z = 0;
@@ -54,9 +54,10 @@ public class Platform_Manager : MonoBehaviour
        _parentObject.transform.Translate(_currentCartesianDirection * _platSpeed * Time.deltaTime);
     }
 
+    // LateUpdate called at the end of each frame.
     void LateUpdate() 
     {
-        //movePlayerIfOnPlatform();
+        MovePlayerIfOnPlatform();
     }
 
     private void AlternateDirections()
@@ -68,22 +69,35 @@ public class Platform_Manager : MonoBehaviour
         }
     }
 
-    private void movePlayerIfOnPlatform()
+
+    private void MovePlayerIfOnPlatform()
     {
         if(_playerOnPlatform)
         {
-            _player.transform.position = _parentObject.transform.position+_playerMovementOffset;
+            Vector3 playerPlatMovement = new Vector3(0,0,0);
+            if(_currentCartesianDirection.y>0)
+            {
+                playerPlatMovement+=_currentCartesianDirection*_platSpeed;
+                playerPlatMovement.y = -0.5f; //While the player is moving up, needs slight downward movement to register as "grounded"
+                _player.GetComponent<CharacterController>().Move(playerPlatMovement*Time.deltaTime);
+            }
+            else
+            {
+                playerPlatMovement+=_currentCartesianDirection*_platSpeed;
+                playerPlatMovement.y = -2*(_platSpeed);// while moving down on plat, needs some extra downward motion to stay grounded
+                _player.GetComponent<CharacterController>().Move(playerPlatMovement*Time.deltaTime);
+            }
+            
         }
     }
 
+    
     private void OnTriggerStay(Collider other) 
     {
         if(other.gameObject.tag=="Player")
         {
             //Debug.Log("Player on Platform");
-            _playerMovementOffset = _player.transform.position - _parentObject.transform.position;
             _playerOnPlatform = true;
-            _player.GetComponent<PlayerController>().SetVerticalWhileOnPlatform(_platSpeed);
         }
     }
 
@@ -94,7 +108,7 @@ public class Platform_Manager : MonoBehaviour
         {
             //Debug.Log("Player off Platform")
             _playerOnPlatform = false;
-            _player.GetComponent<PlayerController>().ResetVertical();
+            
         }
     }
     

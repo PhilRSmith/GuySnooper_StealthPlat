@@ -13,7 +13,7 @@ public class PlayerController : MonoBehaviour
     private float _playerHeight = 2.0f;
     private float _playerCrouchedHeight = 1.2f;
     
-    private float playerBaseGravity=-0.5f;
+    private float playerBaseGravity=-0.5f; //** a default gravity value in case we alter the players current gravity.
     private float playerSlopeForce = 3.0f;
     private float _playerGravity=-0.5f;
     
@@ -47,8 +47,6 @@ public class PlayerController : MonoBehaviour
     private bool _inRangeOfSpire = false;
     private Vector3 _nearestSpirePosition;
     private bool _onSpire = false;
-    //**Platforms
-    public bool _onPlatform = false;
     //   END:Terrain Checks
 
     
@@ -258,7 +256,7 @@ public class PlayerController : MonoBehaviour
             {   
                 if(CheckIfCanUncrouch()==true)
                 {
-                    StartCoroutine(EndCrouch()); //**Cancel crouch if jumping, but we'll allow crouching while airborne for now
+                    StartCoroutine(EndCrouch()); //**Cancel crouch if starting jump, but we'll allow crouching while airborne after for now
                     _yVelocity=0;
                     _isJumping=true;
                     _yVelocity+=_jumpHeight;
@@ -284,18 +282,17 @@ public class PlayerController : MonoBehaviour
         {
             if(Input.GetKeyUp(KeyCode.Space) || Input.GetKeyUp(KeyCode.Joystick1Button0))
             {
-                _yVelocity=2;
+                _yVelocity=2; /* Slight upward bump after ending a held jump to make movement feel more fluid against gravity. */
                 _isJumping=false;
-                //StartCoroutine(EndJumpBuffer());
             }
         }
         if(_yVelocity>_maxDownwardVelocity)
         {
-            _yVelocity += _playerGravity; /**if not grounded, always apply basic gravity (unless an action specifically overrides this)*/
+            _yVelocity += _playerGravity; /**If not grounded, always apply basic gravity (unless an action specifically overrides this)*/
         }
         if(_wallJumpInProgress)
         {
-            playerVelocity = previousMove;
+            playerVelocity = previousMove; /**If the player is in a walljump, maintain momentum while that is in progress*/
         }
         else
         {
@@ -313,7 +310,7 @@ public class PlayerController : MonoBehaviour
         if(!_playerController.isGrounded)
         {
             //Debug.Log(hit.normal);
-            if(hit.normal.y==-1.0f) //**hits a ceiling
+            if(hit.normal.y==-1.0f) //**hits a ceiling, thus we make a "bouncing" effect by making the player move down fast after.
             {   
                 _yVelocity= 3*_playerGravity;
             }
@@ -445,6 +442,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /*
+    * Function used to see if the player hit a wall.
+    * This can be accessed and filled in to interrupt actions such as dashing.
+    */
     private void WallCheck(ControllerColliderHit potentialWall)
     {
             if(potentialWall.normal.x==-1.0f || potentialWall.normal.x == 1.0f)
@@ -466,6 +467,7 @@ public class PlayerController : MonoBehaviour
                 _onWall=false;
             }
     }
+
     bool CheckIfCanUncrouch()
     {
         RaycastHit hit;
@@ -574,6 +576,9 @@ public class PlayerController : MonoBehaviour
         BoundsOnPole();  
     }
 
+    /*
+    *Function that takes the pole boundary information from the pole object of interest in the editor and uses it to create playerbounds while on the pole.
+    */
     void BoundsOnPole()
     {
         if(_poleDirectionVector.x==0)
@@ -642,6 +647,9 @@ public class PlayerController : MonoBehaviour
 
     //**Spires:
 
+    /*
+    *Function that activates when a player is in range of a spire they can jump onto
+    */
     public void InSpireRange(Vector3 spirePosition)
     {
         _inRangeOfSpire = true;
@@ -658,12 +666,18 @@ public class PlayerController : MonoBehaviour
         }   
     }
 
+    /*
+    *Function that is used to turn off the ability to lock onto a spire
+    */ 
     public void ExitSpireRange()
     {
         _inRangeOfSpire = false;
         _nearestSpirePosition = new Vector3(-420,-420,-420); // Just a random vector position value that the player won't access.
     }
 
+    /*
+    *Function that specifies how to handle a player jumping onto a spire
+    */
     private void JumpOnSpire()
     {
         if(_inRangeOfSpire&&Input.GetKey(KeyCode.E) || _inRangeOfSpire&&Input.GetKey(KeyCode.Joystick1Button1))
@@ -673,6 +687,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /*
+    *Function that specifies how to handle movement while on a spire point
+    */
     private void OnTheSpire()
     {
         _horizontalInput = Input.GetAxis("Horizontal");
@@ -694,6 +711,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /*
+    *Function for how to handle when a player exits a spire using a jump
+    */
     private void JumpOffSpire()
     {
         _yVelocity=_jumpHeight;
@@ -701,22 +721,6 @@ public class PlayerController : MonoBehaviour
         _onSpire=false;
         ExitSpireRange();
     }
-
-    //**Platforms:
-
-    public void SetVerticalWhileOnPlatform(float platformSpeed)
-    {
-        _yVelocity = -3.0f * platformSpeed;
-    }
-    public void ResetVertical()
-    {
-        if(_isJumping==false)
-        {
-            _yVelocity = 0;
-        }
-        
-    }
-
 
     /*****   END: Poles/Pipes/Environment specific movement *****/
 
