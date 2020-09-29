@@ -2407,12 +2407,12 @@ PrefabInstance:
     - target: {fileID: 2402164555716481044, guid: 0e73179354bb40148bee03a3179b9e21,
         type: 3}
       propertyPath: m_Size.y
-      value: 3.7192502
+      value: 2.7697167
       objectReference: {fileID: 0}
     - target: {fileID: 2402164555716481044, guid: 0e73179354bb40148bee03a3179b9e21,
         type: 3}
       propertyPath: m_Center.y
-      value: 1.8596251
+      value: 1.3848584
       objectReference: {fileID: 0}
     - target: {fileID: 2402164555716481045, guid: 0e73179354bb40148bee03a3179b9e21,
         type: 3}

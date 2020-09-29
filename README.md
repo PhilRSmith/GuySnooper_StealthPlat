@@ -8,8 +8,8 @@ Update 09/06/2020: I've decided to pivot the style from sly cooper to possibly c
 - August: Basic; good feeling player movement.
 - September: Basic; Level structure for one level by the end of September.
 - October: Basic; Enemies and behavior by the end of October.
-- November:Basic; Player mechanics such as pick-pocketing.
-- December:Basic; Prototype full level.
+- November: Basic; Player mechanics such as pick-pocketing.
+- December: Basic; Prototype full level.
 
 ## Dev_Logs are at https://caelumez.wordpress.com/
 

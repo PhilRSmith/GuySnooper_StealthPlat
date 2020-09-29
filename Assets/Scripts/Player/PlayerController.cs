@@ -201,8 +201,8 @@ public class PlayerController : MonoBehaviour
             _horizontalInput=-0.5f;
         }
         playerDirection.x = _horizontalInput;
-        if((_wallJumpInProgress==true)
-        ||(_dashInProgress==true)) 
+        
+        if((_wallJumpInProgress==true)||(_dashInProgress==true)) 
         {
             playerVelocity = previousMove;
         }
@@ -581,45 +581,45 @@ public class PlayerController : MonoBehaviour
     */
     void BoundsOnPole()
     {
-        if(_poleDirectionVector.x==0)
+        if(_poleDirectionVector.x==0) //**If the pole is straight up
         {
-            if(transform.position.y<_poleBounds[0].y)
+            if(transform.position.y<_poleBounds[0].y) //* upper bounds
             {
                 Vector3 tempLower = _poleBounds[0];
                 tempLower.z -= 0.5f;
                 transform.position = tempLower;
             }
-            if(transform.position.y>_poleBounds[1].y)
+            if(transform.position.y>_poleBounds[1].y) //* lower bounds
             {
                 Vector3 tempUpper = _poleBounds[1];
                 tempUpper.z -= 0.5f;
                 transform.position = tempUpper;
             }
         }
-        else if(_poleDirectionVector.x>0)
+        else if(_poleDirectionVector.x>0) //**If the pole is leaning to the right
         {
-            if(transform.position.x<_poleBounds[0].x ||transform.position.y<_poleBounds[0].y)
+            if(transform.position.x < _poleBounds[0].x ||transform.position.y<_poleBounds[0].y) //* upper bounds
             {
                 Vector3 tempLower = _poleBounds[0];
                 tempLower.z -= 0.5f;
                 transform.position = tempLower;
             }
-            if(transform.position.x>_poleBounds[1].x ||transform.position.y>_poleBounds[1].y)
+            if(transform.position.x > _poleBounds[1].x ||transform.position.y>_poleBounds[1].y) //* lower bounds
             {
                 Vector3 tempUpper = _poleBounds[1];
                 tempUpper.z -= 0.5f;
                 transform.position = tempUpper;
             }
         }
-        else if(_poleDirectionVector.x<0)
+        else if(_poleDirectionVector.x<0) //**If the pole is leaning to the left
         {
-             if(transform.position.x>_poleBounds[0].x ||transform.position.y<_poleBounds[0].y)
+            if(transform.position.x > _poleBounds[0].x ||transform.position.y<_poleBounds[0].y) //* upper bounds
             {
                 Vector3 tempLower = _poleBounds[0];
                 tempLower.z -= 0.5f;
                 transform.position = tempLower;
             }
-            if(transform.position.x<_poleBounds[1].x ||transform.position.y>_poleBounds[1].y)
+            if(transform.position.x < _poleBounds[1].x ||transform.position.y>_poleBounds[1].y) //* lower bounds
             {
                 Vector3 tempUpper = _poleBounds[1];
                 tempUpper.z -= 0.5f;

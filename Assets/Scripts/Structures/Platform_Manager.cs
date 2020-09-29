@@ -60,6 +60,9 @@ public class Platform_Manager : MonoBehaviour
         MovePlayerIfOnPlatform();
     }
 
+    /*
+    * Simple function that switches the platform to the opposite direction based on its set alternation rate
+    */
     private void AlternateDirections()
     {
         if(Time.time>_alternationSwitchTime)
@@ -69,7 +72,9 @@ public class Platform_Manager : MonoBehaviour
         }
     }
 
-
+    /*
+    *Function that handles moving the player alongside the platform when they are registered as on board.
+    */
     private void MovePlayerIfOnPlatform()
     {
         if(_playerOnPlatform)
